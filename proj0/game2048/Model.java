@@ -107,19 +107,63 @@ public class Model extends Observable {
      *    and the trailing tile does not.
      * */
     public boolean tilt(Side side) {
-        boolean changed;
-        changed = false;
+        boolean changed = false;
+        board.setViewingPerspective(side);
+        int size = board.size();
+        // 记录每个位置是否已发生过合并，防止一次操作中同一棋子重复合并
+        boolean[][] merged = new boolean[size][size];
 
-        // TODO: Modify this.board (and perhaps this.score) to account
-        // for the tilt to the Side SIDE. If the board changed, set the
-        // changed local variable to true.
+        // 注意：board.tile(col, row)中 row = size-1 为最顶部
+        // 从倒数第二行开始向下遍历，每个列独立处理
+        for (int row = size - 2; row >= 0; row--) {
+            for (int col = 0; col < size; col++) {
+                Tile t = board.tile(col, row);
+                if (t == null) continue; // 无棋子则跳过
 
+                int targetRow = row; // 初始目标位置为原位置
+                // 向上查找能移动到的最远位置
+                for (int r = row + 1; r < size; r++) {
+                    Tile next = board.tile(col, r);
+                    if (next == null) {
+                        // 当前位置为空，棋子可进一步上移
+                        targetRow = r;
+                    } else if (next.value() == t.value() && !merged[r][col]) {
+                        // 找到相同且未合并的棋子，可合并：目标位置即为 r
+                        targetRow = r;
+                        break;
+                    } else {
+                        // 遇到不同或者已经合并的棋子，不能再上移：停在上一个空位
+                        break;
+                    }
+                }
+
+                // 如果目标位置与原位置不同，则需要移动棋子
+                if (targetRow != row) {
+                    Tile dest = board.tile(col, targetRow);
+                    if (dest != null && dest.value() == t.value() && !merged[targetRow][col]) {
+                        // 目标位置有相同值且未合并，执行合并操作
+                        if (board.move(col, targetRow, t)) {
+                            // board.move 返回 true 表示发生了合并，更新分数
+                            score += board.tile(col, targetRow).value();
+                            merged[targetRow][col] = true;
+                        }
+                    } else {
+                        // 目标位置为空，只需移动棋子到目标位置
+                        board.move(col, targetRow, t);
+                    }
+                    changed = true;
+                }
+            }
+        }
+
+        board.setViewingPerspective(Side.NORTH);
         checkGameOver();
         if (changed) {
             setChanged();
         }
         return changed;
     }
+
 
     /** Checks if the game is over and sets the gameOver variable
      *  appropriately.
@@ -138,6 +182,14 @@ public class Model extends Observable {
      * */
     public static boolean emptySpaceExists(Board b) {
         // TODO: Fill in this function.
+        int size = b.size();
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                if (b.tile(col, row) == null) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -148,6 +200,15 @@ public class Model extends Observable {
      */
     public static boolean maxTileExists(Board b) {
         // TODO: Fill in this function.
+        int size = b.size();
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                Tile currentTile = b.tile(col, row);
+                if (currentTile != null && currentTile.value() == Model.MAX_PIECE) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -159,9 +220,32 @@ public class Model extends Observable {
      */
     public static boolean atLeastOneMoveExists(Board b) {
         // TODO: Fill in this function.
+        if (emptySpaceExists(b)) {
+            return true;
+        }
+
+        int size = b.size();
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                Tile currentTile = b.tile(col, row);
+                /* 检查列 (上下） */
+                if (row + 1 < size) {
+                    Tile downTile = b.tile(col, row + 1);
+                    if (currentTile.value() == downTile.value()) {
+                        return true;
+                    }
+                }
+                /* 检查行 (左右） */
+                if (col + 1 < size) {
+                    Tile rightTile = b.tile(col + 1, row);
+                    if (currentTile.value() == rightTile.value()) {
+                        return true;
+                    }
+                }
+            }
+        }
         return false;
     }
-
 
     @Override
      /** Returns the model as a string, used for debugging. */
