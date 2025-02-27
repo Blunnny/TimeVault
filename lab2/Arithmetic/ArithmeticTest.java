@@ -1,14 +1,15 @@
 package Arithmetic;
 
-import static org.junit.Assert.*;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 public class ArithmeticTest {
 
     /** Performs a few arbitrary tests to see if the product method is
      * correct */
     @Test
-    public void testProduct() {
+    public void testProduct() { // 测试方法必须是非 static 的
         /* assertEquals for comparison of ints takes two arguments:
         assertEquals(expected, actual).
         if it is false, then the assertion will be false,
