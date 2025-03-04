@@ -7,7 +7,7 @@ import java.util.Iterator;
  *
  * @param <T> the type of elements held in this deque
  */
-public class ArrayDeque<T> implements Iterable<T> {
+public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
     /**
      * 存储元素的数组
      */
@@ -57,6 +57,7 @@ public class ArrayDeque<T> implements Iterable<T> {
      *
      * @param item the item to add
      */
+    @Override
     public void addFirst(T item) {
         if (size == items.length) {
             resize(items.length * 2);
@@ -71,6 +72,7 @@ public class ArrayDeque<T> implements Iterable<T> {
      *
      * @param item the item to add
      */
+    @Override
     public void addLast(T item) {
         if (size == items.length) {
             resize(items.length * 2);
@@ -85,15 +87,16 @@ public class ArrayDeque<T> implements Iterable<T> {
      *
      * @return whether the deque contains no elements
      */
-    public boolean isEmpty() {
-        return size == 0;
-    }
+//    public boolean isEmpty() {
+//        return size == 0;
+//    }
 
     /**
      * Returns the number of items in the deque.
      *
      * @return the size of the deque
      */
+    @Override
     public int size() {
         return size;
     }
@@ -102,6 +105,7 @@ public class ArrayDeque<T> implements Iterable<T> {
      * Prints all items in the deque from first to last, separated by spaces,
      * followed by a newline.
      */
+    @Override
     public void printDeque() {
         int current = front;
         for (int i = 0; i < size; i++) {
@@ -117,6 +121,7 @@ public class ArrayDeque<T> implements Iterable<T> {
      *
      * @return the removed item, or null if empty
      */
+    @Override
     public T removeFirst() {
         if (isEmpty()) {
             return null;
@@ -137,6 +142,7 @@ public class ArrayDeque<T> implements Iterable<T> {
      *
      * @return the removed item, or null if empty
      */
+    @Override
     public T removeLast() {
         if (isEmpty()) {
             return null;
@@ -158,6 +164,7 @@ public class ArrayDeque<T> implements Iterable<T> {
      * @param index the index of the item to get
      * @return the item at the index, or null if invalid
      */
+    @Override
     public T get(int index) {
         if (index < 0 || index >= size) {
             return null;

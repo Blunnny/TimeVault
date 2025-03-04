@@ -9,7 +9,7 @@ import java.util.Iterator;
  *
  * @param <T> the type of elements held in this deque
  */
-public class LinkedListDeque<T> implements Iterable<T> {
+public class LinkedListDeque<T> implements Deque<T>, Iterable<T> {
 
     /**
      * Private inner class representing a node in the doubly linked list.
@@ -67,6 +67,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
      *
      * @param item the item to add
      */
+    @Override
     public void addFirst(T item) {
         Node newnode = new Node(item, sentinel, sentinel.next);
         sentinel.next.prev = newnode;
@@ -79,6 +80,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
      *
      * @param item the item to add
      */
+    @Override
     public void addLast(T item) {
         Node newnode = new Node(item, sentinel.prev, sentinel);
         sentinel.prev.next = newnode;
@@ -91,15 +93,16 @@ public class LinkedListDeque<T> implements Iterable<T> {
      *
      * @return whether the deque contains no elements
      */
-    public boolean isEmpty() {
-        return sentinel.next == sentinel;
-    }
+//    public boolean isEmpty() {
+//        return sentinel.next == sentinel;
+//    }
 
     /**
      * Returns the number of items in the deque.
      *
      * @return the size of the deque
      */
+    @Override
     public int size() {
         return size;
     }
@@ -108,6 +111,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
      * Prints all items in the deque from first to last, separated by spaces,
      * followed by a newline.
      */
+    @Override
     public void printDeque() {
         Node current = sentinel.next;
         while (current != sentinel) {
@@ -123,6 +127,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
      *
      * @return the removed item, or null if empty
      */
+    @Override
     public T removeFirst() {
         if (isEmpty()) {
             return null;
@@ -142,6 +147,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
      *
      * @return the removed item, or null if empty
      */
+    @Override
     public T removeLast() {
         if (isEmpty()) {
             return null;
@@ -162,6 +168,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
      * @param index the index of the item to get
      * @return the item at the index, or null if invalid
      */
+    @Override
     public T get(int index) {
         if (index < 0 || index > size() - 1) {
             return null;
