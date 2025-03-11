@@ -188,7 +188,7 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
         private int pos; // Current position relative to front
         private int count; // Number of elements iterated
 
-        public ArrayDequeIterator() {
+        ArrayDequeIterator() {
             pos = front;
             count = 0;
         }

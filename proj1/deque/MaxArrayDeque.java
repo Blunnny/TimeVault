@@ -71,9 +71,9 @@ public class MaxArrayDeque<T> extends ArrayDeque<T> {
      * @param o the object to compare with
      * @return true if equal, false otherwise
      */
-    @Override
-    public boolean equals(Object o) {
-        // 留空，等待你实现（可选）
-        return false; // 占位符
-    }
+//    @Override
+//    public boolean equals(Object o) {
+//        // 留空，等待你实现（可选）
+//        return false; // 占位符
+//    }
 }

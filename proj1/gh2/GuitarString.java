@@ -1,9 +1,5 @@
 package gh2;
 
-// TODO: uncomment the following import once you're ready to start this portion
-
-// TODO: maybe more imports
-
 import deque.Deque;
 import deque.LinkedListDeque;
 
@@ -18,7 +14,6 @@ public class GuitarString {
     private static final double DECAY = .996; // 能量衰减因子
 
     /* Buffer for storing sound data. */
-    // TODO: uncomment the following line once you're ready to start this portion
     private Deque<Double> buffer;
 
     /* Create a guitar string of the given frequency.  */
@@ -64,4 +59,3 @@ public class GuitarString {
         return 0.0;
     }
 }
-// TODO: Remove all comments that say TODO when you're done.

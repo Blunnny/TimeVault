@@ -231,7 +231,7 @@ public class LinkedListDeque<T> implements Deque<T>, Iterable<T> {
         /**
          * Constructs an iterator starting at the first element
          */
-        public DequeIterator() {
+        DequeIterator() {
             current = sentinel.next;
         }
 
