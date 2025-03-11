@@ -11,6 +11,12 @@ public class GuitarHeroLite {
     public static final double CONCERT_C = CONCERT_A * Math.pow(2, 3.0 / 12.0);
 
     public static void main(String[] args) {
+        // 初始化 StdDraw 画布
+        StdDraw.setCanvasSize(600, 200);
+        StdDraw.setXscale(0, 1);
+        StdDraw.setYscale(0, 1);
+        StdDraw.clear();
+
         /* create two guitar strings, for concert A and C */
         GuitarString stringA = new GuitarString(CONCERT_A);
         GuitarString stringC = new GuitarString(CONCERT_C);
