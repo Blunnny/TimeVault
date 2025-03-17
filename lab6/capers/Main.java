@@ -1,6 +1,7 @@
 package capers;
 
 import java.io.File;
+import java.util.Arrays;
 
 import static capers.Utils.*;
 
@@ -41,22 +42,26 @@ public class Main {
             Utils.exitWithError("Must have at least one argument");
         }
 
+        // 确保文件已存在
         CapersRepository.setupPersistence();
-        String text;
+
         switch (args[0]) {
         case "story":
-            /* This call has been handled for you. The rest will be similar. */
-            validateNumArgs("story", args, 2);
-            text = args[1];
-            CapersRepository.writeStory(text);
+            validateNumArgs("story", args, 2); // 验证参数数量
+            String text = args[1]; // 提取 text 参数
+            CapersRepository.writeStory(text); // 将 text 参数添加到 writeStory 中
             break;
         case "dog":
             validateNumArgs("dog", args, 4);
-            // TODO: make a dog
+            String name = args[1];
+            String breed = args[2];
+            int age = Integer.parseInt(args[3]); // 将年龄从字符串转为整数
+            CapersRepository.makeDog(name, breed, age); // 根据参数创建狗对象并持久储存
             break;
         case "birthday":
             validateNumArgs("birthday", args, 2);
-            // TODO: celebrate this dog's birthday
+            String dogName = args[1];
+            CapersRepository.celebrateBirthday(dogName);
             break;
         default:
             exitWithError(String.format("Unknown command: %s", args[0]));
