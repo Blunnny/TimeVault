@@ -1,6 +1,7 @@
 package byow.Networking;
 
-import edu.princeton.cs.introcs.StdDraw;
+
+import byow.StdDraw;
 
 import java.awt.*;
 import java.io.*;

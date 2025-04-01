@@ -10,14 +10,16 @@ import java.util.Random;
  * Draws a world that contains RANDOM tiles.
  */
 public class RandomWorldDemo {
-    private static final int WIDTH = 50;
-    private static final int HEIGHT = 50;
-
-    private static final long SEED = 2873123;
+    // 确定窗口的高度和宽度
+    private static final int WIDTH = 160;
+    private static final int HEIGHT = 100;
+    // 设定随机种子
+    private static final long SEED = 12341245;
+    // 随机数生成器
     private static final Random RANDOM = new Random(SEED);
 
     /**
-     * Fills the given 2D array of tiles with RANDOM tiles.
+     * 使用随机瓦片填充窗口
      * @param tiles
      */
     public static void fillWithRandomTiles(TETile[][] tiles) {
@@ -30,9 +32,7 @@ public class RandomWorldDemo {
         }
     }
 
-    /** Picks a RANDOM tile with a 33% change of being
-     *  a wall, 33% chance of being a flower, and 33%
-     *  chance of being empty space.
+    /** 返回一个随机的瓦片类型，其中 wall、flower、empty的可能性各为 33%
      */
     private static TETile randomTile() {
         int tileNum = RANDOM.nextInt(3);
@@ -45,12 +45,14 @@ public class RandomWorldDemo {
     }
 
     public static void main(String[] args) {
+        // 初始化渲染器
         TERenderer ter = new TERenderer();
         ter.initialize(WIDTH, HEIGHT);
-
+        // 创建空的瓦片数组
         TETile[][] randomTiles = new TETile[WIDTH][HEIGHT];
+        // 使用瓦片填充数组
         fillWithRandomTiles(randomTiles);
-
+        // 渲染显示
         ter.renderFrame(randomTiles);
     }
 
