@@ -28,11 +28,13 @@ public class Engine {
     private static final Font DEFAULT_FONT = new Font("Monaco", Font.PLAIN, 14);
     private static final Color DEFAULT_COLOR = Color.WHITE;
 
+
     // 玩家位置
     private int playerX;
     private int playerY;
     private Random random; // 用于随机选择玩家初始位置
-    
+
+
     // 初始化渲染器
     public Engine() {
         ter.initialize(WIDTH, HEIGHT + 2); // 额外 2 行（顶部）给 HUD 指示栏
@@ -46,10 +48,14 @@ public class Engine {
         drawStartScreen(); // 调用方法显示初始界
         while (true) { // 持续监听用户输入
             if (StdDraw.hasNextKeyTyped()) {
-                char key = StdDraw.nextKeyTyped();
-                handleKey(key); // 根据按下的键更新程序状态
-                if (gameStarted) { // 如果游戏已开始，则渲染世界并绘制 HUD
-                    renderWorldWithHUD();
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastInputTime >= INPUT_DELAY_MS) { // 检查是否距离上次输入超过了设定的延迟时间
+                    char key = StdDraw.nextKeyTyped();
+                    handleKey(key); // 根据按下的键更新程序状态
+                    if (gameStarted) { // 如果游戏已开始，则渲染世界并绘制 HUD
+                        renderWorldWithHUD();
+                    }
+                    lastInputTime = currentTime;
                 }
             }
         }
