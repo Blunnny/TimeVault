@@ -37,8 +37,9 @@ public class Engine {
     private Queue<Character> commandQueue = new LinkedList<>(); // 指令队列
     private static final int MAX_QUEUE_SIZE = 3; // 队列最大容量
 
-    // 关卡管理器
-    private LevelManager levelManager;
+    private LevelManager levelManager; // 关卡管理器
+
+    private int lastDisplayedSeconds = -1; // 记录上一次显示的秒数
 
     // 初始化渲染器
     public Engine() {
@@ -75,10 +76,16 @@ public class Engine {
             }
 
             // 游戏开始后，执行队列中的指令
-            if (gameStarted && currentTime - lastExecuteTime >= EXECUTE_DELAY_MS && !commandQueue.isEmpty()) {
-                char key = commandQueue.poll(); // 取出并移除队列头部指令
-                handleKey(key);
-                renderWorldWithHUD();
+            if (gameStarted) {
+                if (levelManager.isTimeUp()) {
+                    levelManager.drawFailureScreen();
+                    System.exit(0);
+                }
+                if (currentTime - lastExecuteTime >= EXECUTE_DELAY_MS && !commandQueue.isEmpty()) {
+                    char key = commandQueue.poll(); // 取出并移除队列头部指令
+                    handleKey(key);
+                }
+                renderWorldWithHUD(); // 定期刷新 HUD 显示倒计时
                 lastExecuteTime = currentTime;
             }
         }
@@ -184,15 +191,19 @@ public class Engine {
         Font font = new Font("站酷酷黑", Font.PLAIN, 30);
         StdDraw.setFont(font);
 
-        // 1. 在正上方（中心）显示当前关卡数
-        String levelText = "第 " + levelManager.getCurrentLevel() + " / 10 关 ";
-        StdDraw.text(WIDTH / 2.0, HEIGHT, levelText);
+        // 1. 在左上方显示当前关卡数
+        String levelText = "第 " + levelManager.getCurrentLevel() + " / " + LevelManager.getMaxLevel() + " 关 ";
+        StdDraw.text(7.0, HEIGHT, levelText);
         // 2. 在右上方显示“按 Q 键退出游戏”
         String quitText = "按 Q 键退出游戏";
         StdDraw.text(WIDTH - 10.0, HEIGHT, quitText); // 靠右显示，距离右边缘 10 个单位
 
-        // 倒计时功能待完成
-        // todo
+        // 3. 在中心显示倒计时
+        int remainingTime = levelManager.getRemainingTime();
+        int minutes = remainingTime / 60;
+        int seconds = remainingTime % 60;
+        String timeText = String.format("%02d:%02d", minutes, seconds); // 格式化为 MM:SS
+        StdDraw.text(WIDTH / 2.0, HEIGHT, timeText);
 
         // 显示绘制内容
         StdDraw.show();
