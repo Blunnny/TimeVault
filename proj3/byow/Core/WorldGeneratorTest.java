@@ -12,7 +12,7 @@ public class WorldGeneratorTest {
         // 创建 engine 实例
         Engine engine = new Engine();
         // 指定种子
-        String input = "N123456S";
+        String input = "N3336775S";
         // 使用 interactWithInputString 方法获取生成的地图
         TETile[][] world = engine.interactWithInputString(input);
         // 创建 TERenderer 实例并初始化渲染器

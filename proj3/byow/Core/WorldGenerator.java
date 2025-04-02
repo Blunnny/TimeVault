@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Random;
 
 /*
-    * 类 WorldGenerator 用于生成世界
+    * 生成世界
  */
 public class WorldGenerator {
     // 类属性
@@ -37,128 +37,118 @@ public class WorldGenerator {
             }
         }
         // 生成房间
-        generateRooms();
+        generateRooms(seed);
         // 连接房间并生成走廊
         generateHallways();
-
+        // 创建墙壁
+        createWall();
         return world;
     }
 
     // 生成地图中的全部房间
-    public void generateRooms() {
-        // 设置地图房间数为随机 25 - 30
-        Random roomNum = new Random();
-        int ranRoomNum = roomNum.nextInt(1) + 10;
+    public void generateRooms(long seed) {
+        // 根据给定的种子，设置地图房间数为随机 15 - 20
+        int ranRoomNum = random.nextInt(6) + 15;
         // 生成房间
         for (int i = 0; i < ranRoomNum; i++) {
             // 创建房间
             Room room = new Room();
             // 随机设定房间参数
-            int[] params = room.generateRandomRoomParams(width, height);
+            int[] params = room.generateRandomRoomParams(width, height, random);
             // 根据参数绘制该房间
-            room.generateSingleRooms(world, width, height, params[0], params[1], params[2], params[3]);
+            room.generateSingleRooms(world, width, height, params[0], params[1], params[2], params[3], random);
             // 将房间添加到列表
             rooms.add(room);
         }
     }
 
-    // 使用 MST 方法获取房间最优连接方法（走廊长度最短）
+    // 使用 MST 方法获取房间最优连接方法（走廊长度最短）并进行连接
     public void generateHallways() {
         RoomEdgeMST mstGenerator = new RoomEdgeMST(rooms);
         List<RoomEdgeMST.Edge> mstEdges = mstGenerator.getMST();
-        // mstGenerator.printMST(); // 打印测试
+        // mstGenerator.printMST(); // 打印测试，确认 MST 边数量
 
-        // 根据连接方法依次创建走廊
         for (RoomEdgeMST.Edge edge : mstEdges) {
-            createHallway(edge.room1, edge.room2);
+            createHallway(edge.getRoom1(), edge.getRoom2());
         }
     }
 
-    // 根据 room1 和 room2 的位置和大小生成走廊
+    // 连接两个房间，走廊长度为 2
     public void createHallway(Room room1, Room room2) {
-        // 获取房间的边界信息
-        int x1Left = room1.locationX;
-        int x1Right = room1.locationX + room1.roomWidth - 1;
-        int y1Bottom = room1.locationY;
-        int y1Top = room1.locationY + room1.roomHeight - 1;
+        int room1X = room1.getCenter()[0];
+        int room1Y = room1.getCenter()[1];
+        int room2X = room2.getCenter()[0];
+        int room2Y = room2.getCenter()[1];
 
-        int x2Left = room2.locationX;
-        int x2Right = room2.locationX + room2.roomWidth - 1;
-        int y2Bottom = room2.locationY;
-        int y2Top = room2.locationY + room2.roomHeight - 1;
+        // 确保 room1X <= room2X，简化后续逻辑
+        if (room1X > room2X) {
+            // 交换 room1 和 room2 的坐标
+            int tempX = room1X;
+            int tempY = room1Y;
+            room1X = room2X;
+            room1Y = room2Y;
+            room2X = tempX;
+            room2Y = tempY;
+        }
 
-//        if (y1Bottom < y2Top - 1) {
-//            int randomNumber = random.nextInt(y2Top - y1Bottom - 1) + y1Bottom;
-//
-//        }
-//
-//        if (y1Bottom < y2Top || y1Top > y2Bottom) {
-//            int randomNumber = random.nextInt(max - min - 1) + min;
-//        }
+        // 水平段：从 room1X 到 room2X，Y 坐标保持 room1Y
+        for (int x = room1X; x <= room2X; x++) {
+            // 宽度为 2，绘制两条并行草地
+            if (room1Y >= 0 && room1Y < height) {
+                world[x][room1Y] = Tileset.GRASS;
+            }
+            if (room1Y + 1 >= 0 && room1Y + 1 < height) {
+                world[x][room1Y + 1] = Tileset.GRASS;
+            }
+        }
 
-        // 生成 room1 的四个边缘中点
-        List<int[]> room1Edges = new ArrayList<>();
-        room1Edges.add(new int[]{x1Right, (y1Bottom + y1Top) / 2}); // 东
-        room1Edges.add(new int[]{x1Left, (y1Bottom + y1Top) / 2});  // 西
-        room1Edges.add(new int[]{(x1Left + x1Right) / 2, y1Top});    // 北
-        room1Edges.add(new int[]{(x1Left + x1Right) / 2, y1Bottom}); // 南
+        // 垂直段：从 room1Y 到 room2Y，X 坐标保持 room2X
+        int startY = Math.min(room1Y, room2Y);
+        int endY = Math.max(room1Y, room2Y);
+        for (int y = startY; y <= endY; y++) {
+            // 宽度为 2，绘制两条并行草地
+            if (room2X >= 0 && room2X < width) {
+                world[room2X][y] = Tileset.GRASS;
+            }
+            if (room2X + 1 >= 0 && room2X + 1 < width) {
+                world[room2X + 1][y] = Tileset.GRASS;
+            }
+        }
+    }
 
-        // 生成 room2 的四个边缘中点
-        List<int[]> room2Edges = new ArrayList<>();
-        room2Edges.add(new int[]{x2Right, (y2Bottom + y2Top) / 2}); // 东
-        room2Edges.add(new int[]{x2Left, (y2Bottom + y2Top) / 2});  // 西
-        room2Edges.add(new int[]{(x2Left + x2Right) / 2, y2Top});    // 北
-        room2Edges.add(new int[]{(x2Left + x2Right) / 2, y2Bottom}); // 南
-
-        // 寻找曼哈顿距离最小的边缘点对
-        int minDistance = Integer.MAX_VALUE;
-        int[] bestStart = null;
-        int[] bestEnd = null;
-
-        for (int[] edge1 : room1Edges) {
-            for (int[] edge2 : room2Edges) {
-                int dx = Math.abs(edge1[0] - edge2[0]);
-                int dy = Math.abs(edge1[1] - edge2[1]);
-                int distance = dx + dy;
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    bestStart = edge1;
-                    bestEnd = edge2;
+    // 沿着房间与走廊边缘生成墙壁
+    public void createWall() {
+        for (int x = 0; x < width; x += 1) {
+            for (int y = 0; y < height; y += 1) {
+                if (world[x][y] == Tileset.NOTHING && ifWall(x, y)) {
+                    world[x][y] = Tileset.WALL;
                 }
             }
         }
-
-        if (bestStart == null || bestEnd == null) {
-            return; // 没有找到有效路径
-        }
-
-        // 绘制横向路径部分
-        int startX = bestStart[0];
-        int startY = bestStart[1];
-        int endX = bestEnd[0];
-        int endY = bestEnd[1];
-
-        // 横向部分（从 startX 到 endX，固定 y 为 startY）
-        int xStart = Math.min(startX, endX);
-        int xEnd = Math.max(startX, endX);
-        for (int x = xStart; x <= xEnd; x++) {
-            if (x >= 0 && x < width && startY >= 0 && startY < height) {
-                world[x][startY] = Tileset.FLOOR;
-            }
-        }
-
-        // 纵向部分（从 startY 到 endY，固定 x 为 endX）
-        int yStart = Math.min(startY, endY);
-        int yEnd = Math.max(startY, endY);
-        for (int y = yStart; y <= yEnd; y++) {
-            if (endX >= 0 && endX < width && y >= 0 && y < height) {
-                world[endX][y] = Tileset.FLOOR;
-            }
-        }
-
-        // 确保连接点处的墙壁被替换为地板（开口）
-        world[bestStart[0]][bestStart[1]] = Tileset.FLOOR;
-        world[bestEnd[0]][bestEnd[1]] = Tileset.FLOOR;
     }
+
+    // 辅助方法：判断是否应该生成墙壁
+    public boolean ifWall(int x, int y) {
+        // 方向数组：左、右、上、下、左上、右上、左下、右下
+        int[][] directions = {
+                {-1, 0}, {1, 0}, {0, -1}, {0, 1},
+                {-1, -1}, {1, -1}, {-1, 1}, {1, 1}
+        };
+
+        for (int[] dir : directions) {
+            int newX = x + dir[0];
+            int newY = y + dir[1];
+
+            // 只在 newX, newY 在边界内时才检查
+            if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+                if (world[newX][newY] == Tileset.GRASS) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+
 }
 

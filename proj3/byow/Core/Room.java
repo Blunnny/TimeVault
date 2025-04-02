@@ -27,69 +27,72 @@ public class Room {
         this.roomHeight = roomHeight;
     }
 
-    // 根据信息生成房间
-    public void generateSingleRooms(TETile[][] world, int width, int height, int locationX, int locationY, int roomWidth, int roomHeight) {
-        // 初始赋值
-        this.locationX = locationX;
-        this.locationY = locationY;
-        this.roomWidth = roomWidth;
-        this.roomHeight = roomHeight;
 
-        // 判断房间是否存在重叠，若有重叠，则重新生成房间
-        while (overlapping(world, width, height, locationX, locationY, roomWidth, roomHeight)) {
-            int[] params = generateRandomRoomParams(width, height);
+    // 根据信息生成房间
+    public void generateSingleRooms(TETile[][] world, int width, int height, int locationX, int locationY, int roomWidth, int roomHeight, Random random) {
+        // 判断房间是否存在重叠或超出边界，若有，则重新生成参数
+        while (overlapping(world, locationX, locationY, roomWidth, roomHeight)
+        || beyondBorder(width, height, locationX, locationY, roomWidth, roomHeight)) {
+            int[] params = generateRandomRoomParams(width, height, random);
             locationX = params[0];
             locationY = params[1];
             roomWidth = params[2];
             roomHeight = params[3];
         }
+        // 赋值
+        this.locationX = locationX;
+        this.locationY = locationY;
+        this.roomWidth = roomWidth;
+        this.roomHeight = roomHeight;
+
+        // 生成房间
         for (int i = 0; i < roomWidth; i++) {
-            world[Math.min(width - 1, locationX + i)][locationY] = Tileset.WALL;
-            world[Math.min(width - 1, locationX + i)][Math.min(height - 1, locationY + roomHeight + 1)] = Tileset.WALL;
-        }
-        for (int i = 0; i < roomHeight; i++) {
-            world[locationX][Math.min(height - 1, locationY + i + 1)] = Tileset.WALL;
-            world[Math.min(width - 1, locationX + roomWidth - 1)][Math.min(height - 1, locationY + i + 1)] = Tileset.WALL;
-
-    }
-
-    }
-
-    // 辅助方法：判断方法是否存在重叠
-    public boolean overlapping(TETile[][] world, int width, int height, int locationX, int locationY, int roomWidth, int roomHeight) {
-        for (int i = 0; i < roomWidth; i++) {
-            if (world[Math.min(width - 1, locationX + i)][locationY] != Tileset.NOTHING
-                    ||  world[Math.min(width - 1, locationX + i)][Math.min(height - 1, locationY + roomHeight + 1)] != Tileset.NOTHING) {
-                return true;
+            for (int j = 0; j < roomHeight; j++) {
+                world[locationX + i][locationY + j] = Tileset.GRASS;
             }
         }
-        for (int i = 0; i < roomHeight; i++) {
-            if (world[locationX][Math.min(height - 1, locationY + i + 1)] != Tileset.NOTHING
-                    || world[Math.min(width - 1, locationX + roomWidth - 1)][Math.min(height - 1, locationY + i + 1)] != Tileset.NOTHING) {
-                return true;
+    }
+
+    // 辅助方法 1：判断房间是否存在重叠
+    public boolean overlapping(TETile[][] world, int locationX, int locationY, int roomWidth, int roomHeight) {
+        for (int i = 0; i < roomWidth; i++) {
+            for (int j = 0; j < roomHeight; j++) {
+                if (world[locationX + i][locationY + j] != Tileset.NOTHING) {
+                    return true;
+                }
             }
         }
         return false;
     }
 
-    // 辅助方法：随机生成房间参数
-    public int[] generateRandomRoomParams(int width, int height) {
-        // 确定房间左上角的 X 坐标与 Y 坐标
-        Random locX = new Random();
-        int locationX = Math.max(0, locX.nextInt(width) - 3);  // 房间宽度（内部）至少为 3， X 坐标最大为倒数第五列
-        Random locY = new Random();
-        int locationY = Math.max(0, locY.nextInt(height) - 3);  // 房间高度（内部）至少为 3， Y 坐标最大为倒数第五行
+    // 辅助方法 2：判断房间是否超出边界
+    public boolean beyondBorder(int width, int height, int locationX, int locationY, int roomWidth, int roomHeight) {
+        for (int i = 0; i < roomWidth; i++) {
+            for (int j = 0; j < roomHeight; j++) {
+                if (locationX + i >= width || locationY + j >= height) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
-        // 确定房间的大小，其中宽度与高度（内部）最小为 3， 最大为 10
-        Random roomW = new Random();
-        int roomWidth = roomW.nextInt(7) + 5;
-        Random roomH = new Random();
-        int roomHeight = roomH.nextInt(7) + 5;
+    // 辅助方法 3：随机生成房间参数
+    public int[] generateRandomRoomParams(int width, int height, Random random) {
+        // 房间大小（内部），考虑外墙后，最大宽度和高度要减去 2
+        int maxRoomWidth = Math.min(10, width - 2);  // 最大宽度受地图限制
+        int maxRoomHeight = Math.min(10, height - 2); // 最大高度受地图限制
+        int roomWidth = random.nextInt(Math.min(6, maxRoomWidth - 4)) + 5;  // 5 到 10，但不超过地图边界
+        int roomHeight = random.nextInt(Math.min(6, maxRoomHeight - 4)) + 5; // 5 到 10，但不超过地图边界
+
+        // 房间位置，确保留出外墙空间
+        int locationX = random.nextInt(width - roomWidth - 2) + 1;  // 0 到 width - roomWidth - 1
+        int locationY = random.nextInt(height - roomHeight - 2) + 1; // 0 到 height - roomHeight - 5
 
         return new int[]{locationX, locationY, roomWidth, roomHeight};
     }
 
-    // 辅助方法：获取房间中心点坐标
+    // 辅助方法 4：获取房间中心点坐标
     public int[] getCenter() {
         int centerX = locationX + (roomWidth / 2);
         int centerY = locationY + (roomHeight / 2);
