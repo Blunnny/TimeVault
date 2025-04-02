@@ -32,7 +32,6 @@ public class Engine {
     private int playerX;
     private int playerY;
     private Random random; // 用于随机选择玩家初始位置
-
     // 初始化渲染器
     public Engine() {
         ter.initialize(WIDTH, HEIGHT + 2); // 额外 2 行（顶部）给 HUD 指示栏
