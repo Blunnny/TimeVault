@@ -7,6 +7,8 @@ import byow.StdDraw;
 
 import java.awt.Color;
 import java.awt.Font;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Random;
 
 public class Engine {
@@ -15,8 +17,7 @@ public class Engine {
     // 设定世界的宽和高
     public static final int WIDTH = 80;
     public static final int HEIGHT = 40;
-    // 创建 world, 用于存储由 WorldGenerator 生成的世界
-    private TETile[][] world;
+
     // 收集用户输入的种子值
     private StringBuilder seedInput = new StringBuilder();
     // 标记当前是否处于 “等待用户输入种子” 的状态
@@ -28,12 +29,16 @@ public class Engine {
     private static final Font DEFAULT_FONT = new Font("Monaco", Font.PLAIN, 14);
     private static final Color DEFAULT_COLOR = Color.WHITE;
 
+    // 输入节流和指令队列相关变量
+    private long lastInputTime = 0; // 上一次输入指令的时间戳
+    private static final long INPUT_DELAY_MS = 100; // 输入间隔（毫秒）
+    private static final long EXECUTE_DELAY_MS = 100; // 指令执行间隔（毫秒）
+    private long lastExecuteTime = 0; // 上次执行指令的时间戳
+    private Queue<Character> commandQueue = new LinkedList<>(); // 指令队列
+    private static final int MAX_QUEUE_SIZE = 3; // 队列最大容量
 
-    // 玩家位置
-    private int playerX;
-    private int playerY;
-    private Random random; // 用于随机选择玩家初始位置
-
+    // 关卡管理器
+    private LevelManager levelManager;
 
     // 初始化渲染器
     public Engine() {
@@ -45,18 +50,36 @@ public class Engine {
      * 初始显示开始界面，监听用户输入，根据状态更新 UI。
      */
     public void interactWithKeyboard() {
-        drawStartScreen(); // 调用方法显示初始界
+        drawStartScreen(); // 调用方法显示初始界面
+
         while (true) { // 持续监听用户输入
+            long currentTime = System.currentTimeMillis();
             if (StdDraw.hasNextKeyTyped()) {
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - lastInputTime >= INPUT_DELAY_MS) { // 检查是否距离上次输入超过了设定的延迟时间
-                    char key = StdDraw.nextKeyTyped();
-                    handleKey(key); // 根据按下的键更新程序状态
-                    if (gameStarted) { // 如果游戏已开始，则渲染世界并绘制 HUD
-                        renderWorldWithHUD();
+                char key = StdDraw.nextKeyTyped();
+                // 在初始界面或种子输入阶段，直接处理按键，不使用队列
+                if (!gameStarted) {
+                    handleKey(key);
+                    if (waitingForSeed) {
+                        drawSeedInputScreen(); // 实时更新种子输入界面
                     }
-                    lastInputTime = currentTime;
+                } else {
+                    // 游戏开始后，使用队列和节流机制处理移动指令
+                    long inputTime = System.currentTimeMillis();
+                    if (inputTime - lastInputTime >= INPUT_DELAY_MS) {
+                        if (commandQueue.size() < MAX_QUEUE_SIZE) {
+                            commandQueue.offer(key);
+                        }
+                        lastInputTime = inputTime;
+                    }
                 }
+            }
+
+            // 游戏开始后，执行队列中的指令
+            if (gameStarted && currentTime - lastExecuteTime >= EXECUTE_DELAY_MS && !commandQueue.isEmpty()) {
+                char key = commandQueue.poll(); // 取出并移除队列头部指令
+                handleKey(key);
+                renderWorldWithHUD();
+                lastExecuteTime = currentTime;
             }
         }
     }
@@ -100,58 +123,26 @@ public class Engine {
                 drawSeedInputScreen();
             } else if (key == 'S' || key == 's') { // 如果用户按下 S 或 s，确认种子并生成世界
                 long seed = Long.parseLong(seedInput.toString()); // 将输入的字符串（例如 "123"）转换为 long 类型的种子值
-                WorldGenerator generator = new WorldGenerator(WIDTH, HEIGHT, seed); // 创建 WorldGenerator 实例
-                world = generator.generateWorld(seed); // 生成世界，存储到 world
-                random = new Random(seed); // 初始化随机数生成器
-                initializePlayer(); // 初始化玩家位置
+                levelManager = new LevelManager(WIDTH, HEIGHT, seed); // 初始化关卡管理器
                 gameStarted = true; // 标记游戏开始
                 waitingForSeed = false; // 退出种子输入模式
+                renderWorldWithHUD(); // 立即渲染世界和 HUD
             }
         } else if (gameStarted) { // 处理游戏开始后的键盘输入
             if (key == 'Q' || key == 'q') { // 按 Q 可以退出程序 ***待在游戏界面添加提示
                 System.exit(0);
             } else if (key == 'W' || key == 'w') { // 向上移动一格
-                movePlayer(0, 1);
+                levelManager.movePlayer(0, 1);
             } else if (key == 'A' || key == 'a') { // 向左移动一格
-                movePlayer(-1, 0);
+                levelManager.movePlayer(-1, 0);
             } else if (key == 'S' || key == 's') { // 向下移动一格
-                movePlayer(0, -1);
+                levelManager.movePlayer(0, -1);
             } else if (key == 'D' || key == 'd') { // 向右移动一格
-                movePlayer(1, 0);
+                levelManager.movePlayer(1, 0);
             }
         }
     }
 
-    // 初始化玩家位置，随机选择一个草地位置作为玩家初始位置
-    private void initializePlayer() {
-        boolean placed = false;
-        while (!placed) {
-            int x = random.nextInt(WIDTH);
-            int y = random.nextInt(HEIGHT);
-            if (world[x][y] == Tileset.GRASS) {
-                world[x][y] = Tileset.AVATAR;
-                playerX = x;
-                playerY = y;
-                placed = true;
-            }
-        }
-    }
-
-    // 移动玩家位置
-    private void movePlayer(int dx, int dy) {
-        int newX = playerX + dx;
-        int newY = playerY + dy;
-        // 检查新位置是否在边界内且可通行（草地）
-        if (world[newX][newY] == Tileset.GRASS) {
-            // 清除当前位置（恢复为草地）
-            world[playerX][playerY] = Tileset.GRASS;
-            // 更新新位置为玩家
-            world[newX][newY] = Tileset.AVATAR;
-            // 更新玩家坐标
-            playerX = newX;
-            playerY = newY;
-        }
-    }
 
     // 绘制种子输入界面，显示当前输入的种子和提示。
     private void drawSeedInputScreen() {
@@ -178,38 +169,32 @@ public class Engine {
         StdDraw.setFont(DEFAULT_FONT);
         StdDraw.setPenColor(DEFAULT_COLOR);
 
-        ter.renderFrame(world); // 渲染世界
+        ter.renderFrame(levelManager.getWorld()); // 渲染世界
         drawHUD(); // 绘制 HUD
     }
 
-    //???
+    // 绘制顶端状态栏
     private void drawHUD() {
-        // 获取鼠标位置
-        double mouseX = StdDraw.mouseX();
-        double mouseY = StdDraw.mouseY();
-
-        // 转换为世界坐标
-        int tileX = (int) mouseX;
-        int tileY = (int) mouseY;
-
-        // 获取鼠标下的图块
-        String tileDescription = "Nothing";
-        if (tileX >= 0 && tileX < WIDTH && tileY >= 0 && tileY < HEIGHT) {
-            TETile tile = world[tileX][tileY];
-            if (tile == Tileset.WALL) {
-                tileDescription = "Wall";
-            } else if (tile == Tileset.GRASS) {
-                tileDescription = "Grass";
-            }
-        }
-
-        // 绘制 HUD（在世界网格上方）
+        // 绘制 HUD 背景（覆盖顶部一行）
         StdDraw.setPenColor(Color.BLACK);
-        StdDraw.filledRectangle(WIDTH / 2.0, HEIGHT + 1, WIDTH / 2.0, 1);
+        StdDraw.filledRectangle(WIDTH / 2.0, HEIGHT + 1, WIDTH / 2.0, 2);
+
+        // 设置字体和颜色
         StdDraw.setPenColor(Color.WHITE);
-        Font font = new Font("Monaco", Font.PLAIN, 20);
+        Font font = new Font("站酷酷黑", Font.PLAIN, 30);
         StdDraw.setFont(font);
-        StdDraw.text(WIDTH / 2.0, HEIGHT + 1, "Tile: " + tileDescription);
+
+        // 1. 在正上方（中心）显示当前关卡数
+        String levelText = "第 " + levelManager.getCurrentLevel() + " / 10 关 ";
+        StdDraw.text(WIDTH / 2.0, HEIGHT, levelText);
+        // 2. 在右上方显示“按 Q 键退出游戏”
+        String quitText = "按 Q 键退出游戏";
+        StdDraw.text(WIDTH - 10.0, HEIGHT, quitText); // 靠右显示，距离右边缘 10 个单位
+
+        // 倒计时功能待完成
+        // todo
+
+        // 显示绘制内容
         StdDraw.show();
 
         // 重置字体和颜色，防止影响后续渲染
@@ -229,21 +214,19 @@ public class Engine {
                 seed.append(c);
             } else if (c == 'S' || c == 's') { // 如果到达结尾（s），解析种子并生成世界
                 long seedValue = Long.parseLong(seed.toString());
-                WorldGenerator generator = new WorldGenerator(WIDTH, HEIGHT, seedValue);
-                world = generator.generateWorld(seedValue);
-                random = new Random(seedValue); // 初始化随机数生成器
-                initializePlayer(); // 初始化玩家位置
-                break;
+                levelManager = new LevelManager(WIDTH, HEIGHT, seedValue); // 初始化关卡管理器
+                return levelManager.getWorld(); // 返回生成的世界
             }
         }
-        return world;
+        return null;
     }
 
     // 将世界转换为字符串表示
     public String toString() {
-        if (world == null) {
+        if (levelManager == null || levelManager.getWorld() == null) {
             return "World not initialized.";
         }
+        TETile[][] world = levelManager.getWorld(); // 获取 LevelManager 的世界
         StringBuilder sb = new StringBuilder();
         for (int y = HEIGHT - 1; y >= 0; y--) {
             for (int x = 0; x < WIDTH; x++) {
