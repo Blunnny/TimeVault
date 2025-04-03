@@ -64,14 +64,15 @@ public class Engine {
                         drawSeedInputScreen(); // 实时更新种子输入界面
                     }
                 } else {
+                    handleKey(key);
                     // 游戏开始后，使用队列和节流机制处理移动指令
-                    long inputTime = System.currentTimeMillis();
-                    if (inputTime - lastInputTime >= INPUT_DELAY_MS) {
-                        if (commandQueue.size() < MAX_QUEUE_SIZE) {
-                            commandQueue.offer(key);
-                        }
-                        lastInputTime = inputTime;
-                    }
+//                    long inputTime = System.currentTimeMillis();
+//                    if (inputTime - lastInputTime >= INPUT_DELAY_MS) {
+//                        if (commandQueue.size() < MAX_QUEUE_SIZE) {
+//                            commandQueue.offer(key);
+//                        }
+//                        lastInputTime = inputTime;
+//                    }
                 }
             }
 
@@ -85,7 +86,7 @@ public class Engine {
                     char key = commandQueue.poll(); // 取出并移除队列头部指令
                     handleKey(key);
                 }
-                renderWorldWithHUD(); // 定期刷新 HUD 显示倒计时
+                renderHUD(); // 定期更新 HUD
                 lastExecuteTime = currentTime;
             }
         }
@@ -133,19 +134,27 @@ public class Engine {
                 levelManager = new LevelManager(WIDTH, HEIGHT, seed); // 初始化关卡管理器
                 gameStarted = true; // 标记游戏开始
                 waitingForSeed = false; // 退出种子输入模式
-                renderWorldWithHUD(); // 立即渲染世界和 HUD
+                renderWorldWithHUD(); // 初始渲染整个世界和 HUD
             }
         } else if (gameStarted) { // 处理游戏开始后的键盘输入
             if (key == 'Q' || key == 'q') { // 按 Q 可以退出程序 ***待在游戏界面添加提示
                 System.exit(0);
             } else if (key == 'W' || key == 'w') { // 向上移动一格
-                levelManager.movePlayer(0, 1);
+                if (levelManager.movePlayer(0, 1)) {
+                    renderWorldWithHUD(); // 移动成功时渲染整个世界
+                }
             } else if (key == 'A' || key == 'a') { // 向左移动一格
-                levelManager.movePlayer(-1, 0);
+                if (levelManager.movePlayer(-1, 0)) {
+                    renderWorldWithHUD();
+                }
             } else if (key == 'S' || key == 's') { // 向下移动一格
-                levelManager.movePlayer(0, -1);
+                if (levelManager.movePlayer(0, -1)) {
+                    renderWorldWithHUD();
+                }
             } else if (key == 'D' || key == 'd') { // 向右移动一格
-                levelManager.movePlayer(1, 0);
+                if (levelManager.movePlayer(1, 0)) {
+                    renderWorldWithHUD();
+                }
             }
         }
     }
@@ -178,14 +187,26 @@ public class Engine {
 
         ter.renderFrame(levelManager.getWorld()); // 渲染世界
         drawHUD(); // 绘制 HUD
+        lastDisplayedSeconds = levelManager.getRemainingTime(); // 更新显示的秒数
+        StdDraw.show(); // 确保渲染后显示
+    }
+
+    // 只渲染 HUD（局部刷新）
+    private void renderHUD() {
+        int currentSeconds = levelManager.getRemainingTime();
+        if (currentSeconds != lastDisplayedSeconds) { // 仅当秒数变化时重绘
+            // 局部清空 HUD 区域
+            StdDraw.setPenColor(Color.BLACK);
+            StdDraw.filledRectangle(WIDTH / 2.0, HEIGHT + 1, WIDTH / 2.0, 2);
+            // 重绘 HUD
+            drawHUD();
+            lastDisplayedSeconds = currentSeconds;
+        }
+        StdDraw.show(); // 显示更新后的缓冲区
     }
 
     // 绘制顶端状态栏
     private void drawHUD() {
-        // 绘制 HUD 背景（覆盖顶部一行）
-        StdDraw.setPenColor(Color.BLACK);
-        StdDraw.filledRectangle(WIDTH / 2.0, HEIGHT + 1, WIDTH / 2.0, 2);
-
         // 设置字体和颜色
         StdDraw.setPenColor(Color.WHITE);
         Font font = new Font("站酷酷黑", Font.PLAIN, 30);
@@ -202,11 +223,16 @@ public class Engine {
         int remainingTime = levelManager.getRemainingTime();
         int minutes = remainingTime / 60;
         int seconds = remainingTime % 60;
-        String timeText = String.format("%02d:%02d", minutes, seconds); // 格式化为 MM:SS
+        String timeText = String.format("%02d:%02d", minutes, seconds);
+        if (remainingTime <= 30) {
+            StdDraw.setPenColor(Color.RED); // 剩余 30 秒时变红
+        } else {
+            StdDraw.setPenColor(Color.WHITE);
+        }
         StdDraw.text(WIDTH / 2.0, HEIGHT, timeText);
 
-        // 显示绘制内容
-        StdDraw.show();
+//        // 显示绘制内容
+//        StdDraw.show();
 
         // 重置字体和颜色，防止影响后续渲染
         StdDraw.setFont(DEFAULT_FONT);
