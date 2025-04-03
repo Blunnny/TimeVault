@@ -184,12 +184,16 @@ public class Engine {
         Font font = new Font("站酷酷黑", Font.PLAIN, 30);
         StdDraw.setFont(font);
 
-        // 1. 在正上方（中心）显示当前关卡数
-        String levelText = "第 " + levelManager.getCurrentLevel() + " / 10 关 ";
-        StdDraw.text(WIDTH / 2.0, HEIGHT, levelText);
+        // 1. 在左上方显示当前关卡数
+        String levelText = "第 " + levelManager.getCurrentLevel() + " / " + LevelManager.MAX_LEVEL + " 关 ";
+        StdDraw.text(7.0, HEIGHT, levelText);
         // 2. 在右上方显示“按 Q 键退出游戏”
         String quitText = "按 Q 键退出游戏";
         StdDraw.text(WIDTH - 10.0, HEIGHT, quitText); // 靠右显示，距离右边缘 10 个单位
+
+        // 3. 显示当前分数
+        String scoreText = "当前分数 : " + levelManager.getScore();
+        StdDraw.text(WIDTH / 2.0, HEIGHT, scoreText);
 
         // 倒计时功能待完成
         // todo

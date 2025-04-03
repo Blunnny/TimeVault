@@ -12,7 +12,7 @@ import java.awt.Font;
  */
 public class LevelManager {
     private int currentLevel; // 当前关卡数
-    private static final int MAX_LEVEL = 5; // 最大关卡数
+    public static final int MAX_LEVEL = 5; // 最大关卡数
     private final int width, height; // 世界尺寸
 
     private TETile[][] world; // 当前世界
@@ -25,6 +25,9 @@ public class LevelManager {
     private int keyX, keyY; // 钥匙位置
     private boolean hasKey; // 是否持有钥匙
 
+    private int score; // 玩家当前分数
+    private int[] levelBonus = {0, 100, 200, 400, 800, 1600}; // 每关的基础分数奖励
+
     // 倒计时相关变量
     private long levelStartTime; // 关卡开始时间（毫秒）
     private static final int TIME_LIMIT_SECONDS = 120; // 每关限时 120 秒
@@ -34,6 +37,7 @@ public class LevelManager {
         this.width = width;
         this.height = height;
         this.currentLevel = 1;
+        this.score = 0; // 初始分数为0
         this.random = new Random(seed);
         initializeLevel(); // 初始化第一关
     }
@@ -42,10 +46,15 @@ public class LevelManager {
     private void initializeLevel() {
         long seed = random.nextLong(); // 基于初始种子生成新种子，保证每关地图不同但都基于起始种子
         WorldGenerator generator = new WorldGenerator(width, height, seed);
-        world = generator.generateWorld(seed);
+        world = generator.generateWorld(seed, currentLevel);
         hasKey = false; // 尚未获取钥匙
         levelStartTime = System.currentTimeMillis(); // 记录关卡开始时间
         placePlayerAndExit();
+    }
+
+    // 获取分数的方法
+    public int getScore() {
+        return score;
     }
 
     // 放置玩家和出口
@@ -87,13 +96,13 @@ public class LevelManager {
         int newX = playerX + dx;
         int newY = playerY + dy;
         if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
-            if (world[newX][newY] == Tileset.GRASS) {
+            if (world[newX][newY] == Tileset.GRASS) { // 目标位置为草地，则移动到目标位置
                 world[playerX][playerY] = Tileset.GRASS;
                 world[newX][newY] = Tileset.AVATAR;
                 playerX = newX;
                 playerY = newY;
                 return true; // 需要渲染新关卡
-            } else if (world[newX][newY] == Tileset.KEY) {
+            } else if (world[newX][newY] == Tileset.KEY) { // 目标位置为钥匙，则获取该钥匙并修改门的状态
                 world[playerX][playerY] = Tileset.GRASS;
                 world[newX][newY] = Tileset.AVATAR;
                 playerX = newX;
@@ -102,13 +111,22 @@ public class LevelManager {
                 world[exitX][exitY] = Tileset.UNLOCKED_DOOR;
                 drawMessage("门已解锁！"); // 提示门已解锁
                 return true;
-            } else if (world[newX][newY] == Tileset.LOCKED_DOOR) {
+            } else if (world[newX][newY] == Tileset.LOCKED_DOOR) { // 目标为上锁的门，提示无法开门
                 drawMessage("需要钥匙才能打开门！"); // 无钥匙时显示提示
                 return false;
-            } else if (world[newX][newY] == Tileset.UNLOCKED_DOOR) {
+            } else if (world[newX][newY] == Tileset.UNLOCKED_DOOR) { // 目标为解锁的门，则进入下一关
                     nextLevel(); // 有钥匙时进入下一关
                     return true;
-                }
+            } else if (world[newX][newY] == Tileset.COIN) {
+                world[playerX][playerY] = Tileset.GRASS;
+                world[newX][newY] = Tileset.AVATAR;
+                playerX = newX;
+                playerY = newY;
+                int[] values = {50, 100, 150, 200, 250, 300}; // 拾取金币随机获得 50 - 300 分
+                int levelBonus = currentLevel * 50; // 关卡每加一关，拾取金币会得到额外 50 奖励分
+                extraPoints(values[random.nextInt(values.length)] + levelBonus);
+                return true;
+            }
             }
         return false; // 无需渲染
     }
@@ -116,6 +134,10 @@ public class LevelManager {
     // 进入下一关
     private void nextLevel() {
         if (currentLevel < MAX_LEVEL) {
+            // *通关奖励 = 基础奖励 + 剩余时间奖励（完成倒计时后实现）
+            int timeBonus = getRemainingTime() * 2; // 每剩余 1 秒得 2 分
+            score += levelBonus[currentLevel] + timeBonus;
+
             currentLevel++;
             initializeLevel();
         } else {
@@ -124,15 +146,33 @@ public class LevelManager {
         }
     }
 
+    // 获取奖励分
+    public void extraPoints(int points) {
+        score += points;
+        drawMessage("获得 " + points + " 分!");
+    }
+
+
     // 绘制胜利界面
     private void drawVictoryScreen() {
+        // 显示通关字样
         StdDraw.clear(Color.BLACK);
         StdDraw.setPenColor(Color.WHITE);
-        Font font = new Font("三极泼墨体", Font.BOLD, 100);
+        Font font = new Font("三极泼墨体", Font.PLAIN, 200);
         StdDraw.setFont(font);
         String[] messages = {"通关！", "得胜！"};
         Random randomSuccess = new Random();
         StdDraw.text(width / 2.0, height / 2.0, messages[randomSuccess.nextInt(messages.length)]);
+        StdDraw.show();
+        StdDraw.pause(3000);
+
+        // 显示最终分数
+        StdDraw.clear(Color.BLACK);
+        StdDraw.setPenColor(Color.WHITE);
+        Font scoreFont = new Font("三极泼墨体", Font.PLAIN, 100);
+        StdDraw.setFont(scoreFont);
+        StdDraw.text(width / 2.0, height / 2.0, "最终分数: " + score);
+
         StdDraw.show();
         StdDraw.pause(3000);
     }

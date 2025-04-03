@@ -29,7 +29,7 @@ public class WorldGenerator {
     }
 
     // 根据种子初始化并返回世界
-    public TETile[][] generateWorld(long seed) {
+    public TETile[][] generateWorld(long seed, int level) {
         // 使用空白填充，初始化世界
         for (int x = 0; x < width; x += 1) {
             for (int y = 0; y < height; y += 1) {
@@ -42,6 +42,8 @@ public class WorldGenerator {
         generateHallways();
         // 创建墙壁
         createWall();
+        // 根据关卡数生成金币
+        generateCoins(level);
         return world;
     }
 
@@ -60,6 +62,47 @@ public class WorldGenerator {
             // 将房间添加到列表
             rooms.add(room);
         }
+    }
+
+    // 生成地图中的全部金币
+    private void generateCoins(int level) {
+        // 基础金币数量 + 每关增加的数量
+        int baseCoins = 10; // 基础金币数量为 10
+        int[] values = {1, 2, 3, 4, 5}; // 每加 1 关随机增加 1-5 枚金币
+        int coinsPerLevel = values[random.nextInt(values.length)];
+        int coinCount = baseCoins + coinsPerLevel * level;
+
+        int coinsPlaced = 0; // 已放置的金币数
+        int attempts = 0; // 尝试放置次数
+        int maxAttempts = 200; // 防止无限循环，最多尝试上限为 100
+
+        while (coinsPlaced < coinCount && attempts < maxAttempts) {
+            attempts++;
+            int x = random.nextInt(width);
+            int y = random.nextInt(height);
+
+            // 只在草地上放置金币，且不与其他金币重叠
+            if (world[x][y] == Tileset.GRASS && !isAdjacentToCoin(x, y)) {
+                world[x][y] = Tileset.COIN;
+                coinsPlaced++;
+            }
+        }
+    }
+
+    // 辅助方法：检查周围是否有金币，避免金币过于集中
+    private boolean isAdjacentToCoin(int x, int y) {
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -2; dy <= 2; dy++) {
+                int nx = x + dx;
+                int ny = y + dy;
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                    if (world[nx][ny] == Tileset.COIN) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     // 使用 MST 方法获取房间最优连接方法（走廊长度最短）并进行连接

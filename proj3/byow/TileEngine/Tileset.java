@@ -34,6 +34,9 @@ public class Tileset {
     public static final TETile MOUNTAIN = new TETile('▲', Color.gray, Color.black, "mountain");
     public static final TETile TREE = new TETile('♠', Color.green, Color.black, "tree");
     public static final TETile KEY = new TETile('★', Color.red, Color.black, "key");
+    public static final TETile TRAP = new TETile('☠', Color.red, Color.black, "陷阱");
+    public static final TETile COIN = new TETile('$', Color.yellow, Color.black, "金币");
+    public static final TETile PORTAL = new TETile('○', Color.cyan, Color.black, "传送门");
 }
 
 
