@@ -31,8 +31,8 @@ public class Engine {
 
     // 输入节流和指令队列相关变量
     private long lastInputTime = 0; // 上一次输入指令的时间戳
-    private static final long INPUT_DELAY_MS = 100; // 输入间隔（毫秒）
-    private static final long EXECUTE_DELAY_MS = 100; // 指令执行间隔（毫秒）
+    private static final long INPUT_DELAY_MS = 200; // 输入间隔（毫秒）
+    private static final long EXECUTE_DELAY_MS = 200; // 指令执行间隔（毫秒）
     private long lastExecuteTime = 0; // 上次执行指令的时间戳
     private Queue<Character> commandQueue = new LinkedList<>(); // 指令队列
     private static final int MAX_QUEUE_SIZE = 3; // 队列最大容量
@@ -64,15 +64,15 @@ public class Engine {
                         drawSeedInputScreen(); // 实时更新种子输入界面
                     }
                 } else {
-                    handleKey(key);
+                    // handleKey(key);
                     // 游戏开始后，使用队列和节流机制处理移动指令
-//                    long inputTime = System.currentTimeMillis();
-//                    if (inputTime - lastInputTime >= INPUT_DELAY_MS) {
-//                        if (commandQueue.size() < MAX_QUEUE_SIZE) {
-//                            commandQueue.offer(key);
-//                        }
-//                        lastInputTime = inputTime;
-//                    }
+                    long inputTime = System.currentTimeMillis();
+                    if (inputTime - lastInputTime >= INPUT_DELAY_MS) {
+                        if (commandQueue.size() < MAX_QUEUE_SIZE) {
+                            commandQueue.offer(key);
+                        }
+                        lastInputTime = inputTime;
+                    }
                 }
             }
 
@@ -82,12 +82,20 @@ public class Engine {
                     levelManager.drawFailureScreen();
                     System.exit(0);
                 }
-                if (currentTime - lastExecuteTime >= EXECUTE_DELAY_MS && !commandQueue.isEmpty()) {
-                    char key = commandQueue.poll(); // 取出并移除队列头部指令
-                    handleKey(key);
+                if (currentTime - lastExecuteTime >= EXECUTE_DELAY_MS) {
+                    boolean needRender = false;
+                    while (!commandQueue.isEmpty()) {
+                        char key = commandQueue.poll(); // 取出并移除队列头部指令
+                        if (handleKeyWithResult(key)) {
+                            needRender = true; // 如果有变化，标记需要渲染
+                        }
+                    }
+                    if (needRender) {
+                        renderWorldWithHUD(); // 只在需要时渲染整个世界
+                    }
+                    renderHUD(); // 定期更新 HUD
+                    lastExecuteTime = currentTime;
                 }
-                renderHUD(); // 定期更新 HUD
-                lastExecuteTime = currentTime;
             }
         }
     }
@@ -118,47 +126,47 @@ public class Engine {
     }
 
     // 根据当前状态和用户输入的键，更新程序状态
-    private void handleKey(char key) {
+    private boolean handleKeyWithResult(char key) {
         // 处理初始界面的输入
         if (!waitingForSeed && !gameStarted) {
             if (key == 'N' || key == 'n') {
                 waitingForSeed = true; // 标记程序进入“等待种子”状态
                 drawSeedInputScreen(); // 显示种子输入界面
+                return true;
             }
         } else if (waitingForSeed) { // 处理种子输入阶段的键盘输入
             if (Character.isDigit(key)) { // 如果用户输入的是数字，则将数字存入 seedInput
                 seedInput.append(key);
                 drawSeedInputScreen();
+                return true;
             } else if (key == 'S' || key == 's') { // 如果用户按下 S 或 s，确认种子并生成世界
                 long seed = Long.parseLong(seedInput.toString()); // 将输入的字符串（例如 "123"）转换为 long 类型的种子值
                 levelManager = new LevelManager(WIDTH, HEIGHT, seed); // 初始化关卡管理器
                 gameStarted = true; // 标记游戏开始
                 waitingForSeed = false; // 退出种子输入模式
-                renderWorldWithHUD(); // 初始渲染整个世界和 HUD
+                return true; // 需要渲染世界
             }
         } else if (gameStarted) { // 处理游戏开始后的键盘输入
             if (key == 'Q' || key == 'q') { // 按 Q 可以退出程序 ***待在游戏界面添加提示
                 System.exit(0);
+                return false;
             } else if (key == 'W' || key == 'w') { // 向上移动一格
-                if (levelManager.movePlayer(0, 1)) {
-                    renderWorldWithHUD(); // 移动成功时渲染整个世界
-                }
+                return levelManager.movePlayer(0, 1);
             } else if (key == 'A' || key == 'a') { // 向左移动一格
-                if (levelManager.movePlayer(-1, 0)) {
-                    renderWorldWithHUD();
-                }
+                return levelManager.movePlayer(-1, 0);
             } else if (key == 'S' || key == 's') { // 向下移动一格
-                if (levelManager.movePlayer(0, -1)) {
-                    renderWorldWithHUD();
-                }
+                return levelManager.movePlayer(0, -1);
             } else if (key == 'D' || key == 'd') { // 向右移动一格
-                if (levelManager.movePlayer(1, 0)) {
-                    renderWorldWithHUD();
-                }
+                return levelManager.movePlayer(1, 0);
             }
         }
+        return false; // 无需渲染
     }
 
+    // 原始 handleKey 用于非游戏状态
+    private void handleKey(char key) {
+        handleKeyWithResult(key);
+    }
 
     // 绘制种子输入界面，显示当前输入的种子和提示。
     private void drawSeedInputScreen() {
@@ -230,9 +238,6 @@ public class Engine {
             StdDraw.setPenColor(Color.WHITE);
         }
         StdDraw.text(WIDTH / 2.0, HEIGHT, timeText);
-
-//        // 显示绘制内容
-//        StdDraw.show();
 
         // 重置字体和颜色，防止影响后续渲染
         StdDraw.setFont(DEFAULT_FONT);

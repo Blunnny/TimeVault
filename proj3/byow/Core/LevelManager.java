@@ -161,7 +161,7 @@ public class LevelManager {
         StdDraw.setFont(font);
         StdDraw.text(width / 2.0, height / 2.0, message);
         StdDraw.show();
-        StdDraw.pause(2000); // 显示 1 秒
+        StdDraw.pause(1000); // 显示 1 秒
     }
 
     // 检查时间是否耗尽
