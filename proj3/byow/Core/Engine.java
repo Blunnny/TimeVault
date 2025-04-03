@@ -31,15 +31,14 @@ public class Engine {
 
     // 输入节流和指令队列相关变量
     private long lastInputTime = 0; // 上一次输入指令的时间戳
-    private static final long INPUT_DELAY_MS = 200; // 输入间隔（毫秒）
-    private static final long EXECUTE_DELAY_MS = 200; // 指令执行间隔（毫秒）
+    private static final long INPUT_DELAY_MS = 100; // 输入间隔（毫秒）
+    private static final long EXECUTE_DELAY_MS = 100; // 指令执行间隔（毫秒）
     private long lastExecuteTime = 0; // 上次执行指令的时间戳
     private Queue<Character> commandQueue = new LinkedList<>(); // 指令队列
     private static final int MAX_QUEUE_SIZE = 3; // 队列最大容量
 
-    private LevelManager levelManager; // 关卡管理器
-
-    private int lastDisplayedSeconds = -1; // 记录上一次显示的秒数
+    // 关卡管理器
+    private LevelManager levelManager;
 
     // 初始化渲染器
     public Engine() {
@@ -64,7 +63,6 @@ public class Engine {
                         drawSeedInputScreen(); // 实时更新种子输入界面
                     }
                 } else {
-                    // handleKey(key);
                     // 游戏开始后，使用队列和节流机制处理移动指令
                     long inputTime = System.currentTimeMillis();
                     if (inputTime - lastInputTime >= INPUT_DELAY_MS) {
@@ -77,25 +75,11 @@ public class Engine {
             }
 
             // 游戏开始后，执行队列中的指令
-            if (gameStarted) {
-                if (levelManager.isTimeUp()) {
-                    levelManager.drawFailureScreen();
-                    System.exit(0);
-                }
-                if (currentTime - lastExecuteTime >= EXECUTE_DELAY_MS) {
-                    boolean needRender = false;
-                    while (!commandQueue.isEmpty()) {
-                        char key = commandQueue.poll(); // 取出并移除队列头部指令
-                        if (handleKeyWithResult(key)) {
-                            needRender = true; // 如果有变化，标记需要渲染
-                        }
-                    }
-                    if (needRender) {
-                        renderWorldWithHUD(); // 只在需要时渲染整个世界
-                    }
-                    renderHUD(); // 定期更新 HUD
-                    lastExecuteTime = currentTime;
-                }
+            if (gameStarted && currentTime - lastExecuteTime >= EXECUTE_DELAY_MS && !commandQueue.isEmpty()) {
+                char key = commandQueue.poll(); // 取出并移除队列头部指令
+                handleKey(key);
+                renderWorldWithHUD();
+                lastExecuteTime = currentTime;
             }
         }
     }
@@ -126,47 +110,39 @@ public class Engine {
     }
 
     // 根据当前状态和用户输入的键，更新程序状态
-    private boolean handleKeyWithResult(char key) {
+    private void handleKey(char key) {
         // 处理初始界面的输入
         if (!waitingForSeed && !gameStarted) {
             if (key == 'N' || key == 'n') {
                 waitingForSeed = true; // 标记程序进入“等待种子”状态
                 drawSeedInputScreen(); // 显示种子输入界面
-                return true;
             }
         } else if (waitingForSeed) { // 处理种子输入阶段的键盘输入
             if (Character.isDigit(key)) { // 如果用户输入的是数字，则将数字存入 seedInput
                 seedInput.append(key);
                 drawSeedInputScreen();
-                return true;
             } else if (key == 'S' || key == 's') { // 如果用户按下 S 或 s，确认种子并生成世界
                 long seed = Long.parseLong(seedInput.toString()); // 将输入的字符串（例如 "123"）转换为 long 类型的种子值
                 levelManager = new LevelManager(WIDTH, HEIGHT, seed); // 初始化关卡管理器
                 gameStarted = true; // 标记游戏开始
                 waitingForSeed = false; // 退出种子输入模式
-                return true; // 需要渲染世界
+                renderWorldWithHUD(); // 立即渲染世界和 HUD
             }
         } else if (gameStarted) { // 处理游戏开始后的键盘输入
             if (key == 'Q' || key == 'q') { // 按 Q 可以退出程序 ***待在游戏界面添加提示
                 System.exit(0);
-                return false;
             } else if (key == 'W' || key == 'w') { // 向上移动一格
-                return levelManager.movePlayer(0, 1);
+                levelManager.movePlayer(0, 1);
             } else if (key == 'A' || key == 'a') { // 向左移动一格
-                return levelManager.movePlayer(-1, 0);
+                levelManager.movePlayer(-1, 0);
             } else if (key == 'S' || key == 's') { // 向下移动一格
-                return levelManager.movePlayer(0, -1);
+                levelManager.movePlayer(0, -1);
             } else if (key == 'D' || key == 'd') { // 向右移动一格
-                return levelManager.movePlayer(1, 0);
+                levelManager.movePlayer(1, 0);
             }
         }
-        return false; // 无需渲染
     }
 
-    // 原始 handleKey 用于非游戏状态
-    private void handleKey(char key) {
-        handleKeyWithResult(key);
-    }
 
     // 绘制种子输入界面，显示当前输入的种子和提示。
     private void drawSeedInputScreen() {
@@ -195,49 +171,31 @@ public class Engine {
 
         ter.renderFrame(levelManager.getWorld()); // 渲染世界
         drawHUD(); // 绘制 HUD
-        lastDisplayedSeconds = levelManager.getRemainingTime(); // 更新显示的秒数
-        StdDraw.show(); // 确保渲染后显示
-    }
-
-    // 只渲染 HUD（局部刷新）
-    private void renderHUD() {
-        int currentSeconds = levelManager.getRemainingTime();
-        if (currentSeconds != lastDisplayedSeconds) { // 仅当秒数变化时重绘
-            // 局部清空 HUD 区域
-            StdDraw.setPenColor(Color.BLACK);
-            StdDraw.filledRectangle(WIDTH / 2.0, HEIGHT + 1, WIDTH / 2.0, 2);
-            // 重绘 HUD
-            drawHUD();
-            lastDisplayedSeconds = currentSeconds;
-        }
-        StdDraw.show(); // 显示更新后的缓冲区
     }
 
     // 绘制顶端状态栏
     private void drawHUD() {
+        // 绘制 HUD 背景（覆盖顶部一行）
+        StdDraw.setPenColor(Color.BLACK);
+        StdDraw.filledRectangle(WIDTH / 2.0, HEIGHT + 1, WIDTH / 2.0, 2);
+
         // 设置字体和颜色
         StdDraw.setPenColor(Color.WHITE);
         Font font = new Font("站酷酷黑", Font.PLAIN, 30);
         StdDraw.setFont(font);
 
-        // 1. 在左上方显示当前关卡数
-        String levelText = "第 " + levelManager.getCurrentLevel() + " / " + LevelManager.getMaxLevel() + " 关 ";
-        StdDraw.text(7.0, HEIGHT, levelText);
+        // 1. 在正上方（中心）显示当前关卡数
+        String levelText = "第 " + levelManager.getCurrentLevel() + " / 10 关 ";
+        StdDraw.text(WIDTH / 2.0, HEIGHT, levelText);
         // 2. 在右上方显示“按 Q 键退出游戏”
         String quitText = "按 Q 键退出游戏";
         StdDraw.text(WIDTH - 10.0, HEIGHT, quitText); // 靠右显示，距离右边缘 10 个单位
 
-        // 3. 在中心显示倒计时
-        int remainingTime = levelManager.getRemainingTime();
-        int minutes = remainingTime / 60;
-        int seconds = remainingTime % 60;
-        String timeText = String.format("%02d:%02d", minutes, seconds);
-        if (remainingTime <= 30) {
-            StdDraw.setPenColor(Color.RED); // 剩余 30 秒时变红
-        } else {
-            StdDraw.setPenColor(Color.WHITE);
-        }
-        StdDraw.text(WIDTH / 2.0, HEIGHT, timeText);
+        // 倒计时功能待完成
+        // todo
+
+        // 显示绘制内容
+        StdDraw.show();
 
         // 重置字体和颜色，防止影响后续渲染
         StdDraw.setFont(DEFAULT_FONT);

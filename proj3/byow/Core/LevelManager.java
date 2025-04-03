@@ -103,15 +103,13 @@ public class LevelManager {
                 drawMessage("门已解锁！"); // 提示门已解锁
                 return true;
             } else if (world[newX][newY] == Tileset.LOCKED_DOOR) {
-                if (hasKey) {
+                drawMessage("需要钥匙才能打开门！"); // 无钥匙时显示提示
+                return false;
+            } else if (world[newX][newY] == Tileset.UNLOCKED_DOOR) {
                     nextLevel(); // 有钥匙时进入下一关
                     return true;
-                } else {
-                    drawMessage("需要钥匙才能打开门！"); // 无钥匙时显示提示
-                    return false;
                 }
             }
-        }
         return false; // 无需渲染
     }
 
