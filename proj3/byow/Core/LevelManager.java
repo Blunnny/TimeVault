@@ -152,11 +152,10 @@ public class LevelManager {
                 handleGamblingEvent();
                 break;
             case 3: // 情况 3：加时 60 秒
-                levelStartTime -= 60000; // 将开始时间往前调 60 秒
-                drawMessage("时间延长30秒!", Color.CYAN);
+                levelStartTime += 60000; // 将开始时间往前调 60 秒
+                drawMessage("时间延长60秒!", Color.CYAN);
                 break;
         }
-
     }
 
 

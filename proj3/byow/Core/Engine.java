@@ -52,8 +52,17 @@ public class Engine {
     public void interactWithKeyboard() {
         drawStartScreen(); // 调用方法显示初始界面
 
+        // 添加最后渲染时间跟踪
+        long lastRenderTime = 0;
+        final long RENDER_INTERVAL_MS = 300; // 每200ms渲染一次，防止闪烁
+
         while (true) { // 持续监听用户输入
             long currentTime = System.currentTimeMillis();
+            // 检查时间是否耗尽
+            if (gameStarted && levelManager.isTimeUp()) {
+                levelManager.drawFailureScreen();
+                System.exit(0);
+            }
             if (StdDraw.hasNextKeyTyped()) {
                 char key = StdDraw.nextKeyTyped();
                 // 在初始界面或种子输入阶段，直接处理按键，不使用队列
@@ -75,12 +84,20 @@ public class Engine {
             }
 
             // 游戏开始后，执行队列中的指令
-            if (gameStarted && currentTime - lastExecuteTime >= EXECUTE_DELAY_MS && !commandQueue.isEmpty()) {
-                char key = commandQueue.poll(); // 取出并移除队列头部指令
-                handleKey(key);
-                renderWorldWithHUD();
-                lastExecuteTime = currentTime;
+            if (gameStarted) {
+                if (currentTime - lastExecuteTime >= EXECUTE_DELAY_MS && !commandQueue.isEmpty()) {
+                    char key = commandQueue.poll(); // 取出并移除队列头部指令
+                    handleKey(key);
+                    lastExecuteTime = currentTime;
+                }
+                // 控制渲染频率
+                if (currentTime - lastRenderTime >= RENDER_INTERVAL_MS) {
+                    renderWorldWithHUD();
+                    lastRenderTime = currentTime;
+                }
             }
+            // 小延迟减少CPU占用
+            StdDraw.pause(10);
         }
     }
 
@@ -190,13 +207,15 @@ public class Engine {
         // 2. 在右上方显示“按 Q 键退出游戏”
         String quitText = "按 Q 键退出游戏";
         StdDraw.text(WIDTH - 7.0, HEIGHT, quitText); // 靠右显示，距离右边缘 10 个单位
-
-        // 3. 显示当前分数
+        // 3. 在中间偏左显示当前分数
         String scoreText = "当前分数 : " + levelManager.getScore();
         StdDraw.text(WIDTH / 2.0 - 15, HEIGHT, scoreText);
-
-        // 倒计时功能待完成
-        // todo
+        // 4. 在中间偏右显示倒计时
+        int remainingTime = levelManager.getRemainingTime();
+        Color timeColor = getTimeColor(remainingTime); // 根据剩余时间改变颜色
+        StdDraw.setPenColor(timeColor);
+        String timeText = String.format("%02d:%02d", remainingTime / 60, remainingTime % 60);
+        StdDraw.text(WIDTH / 2.0, HEIGHT, timeText);
 
         // 显示绘制内容
         StdDraw.show();
@@ -206,6 +225,15 @@ public class Engine {
         StdDraw.setPenColor(DEFAULT_COLOR);
     }
 
+    // 辅助方法：根据剩余时间获取颜色（最后 60 秒变黄，最后 30 秒变红）
+    private Color getTimeColor(int remainingTime) {
+        if (remainingTime <= 30) {
+            return Color.RED;
+        } else if (remainingTime <= 60) {
+            return Color.YELLOW;
+        }
+        return Color.WHITE;
+    }
     /*
      * 处理字符串输入（例如 "N123S"），生成世界并返回
      * 模拟键盘模式的操作（N → 输入种子 → S），但以非交互的方式执行
