@@ -117,7 +117,7 @@ public class LevelManager {
             } else if (world[newX][newY] == Tileset.UNLOCKED_DOOR) { // 目标为解锁的门，则进入下一关
                     nextLevel(); // 有钥匙时进入下一关
                     return true;
-            } else if (world[newX][newY] == Tileset.COIN) {
+            } else if (world[newX][newY] == Tileset.COIN) { // 目标为金币，则增加相应分数
                 world[playerX][playerY] = Tileset.GRASS;
                 world[newX][newY] = Tileset.AVATAR;
                 playerX = newX;
@@ -126,9 +126,78 @@ public class LevelManager {
                 int levelBonus = currentLevel * 50; // 关卡每加一关，拾取金币会得到额外 50 奖励分
                 extraPoints(values[random.nextInt(values.length)] + levelBonus);
                 return true;
+            } else if (world[newX][newY] == Tileset.EVENT) { // 目标为随机事件，使用 triggerRandomEvent 方法处理
+                world[playerX][playerY] = Tileset.GRASS;
+                world[newX][newY] = Tileset.AVATAR;
+                playerX = newX;
+                playerY = newY;
+                triggerRandomEvent();
+                return true;
             }
-            }
+        }
         return false; // 无需渲染
+    }
+
+    // 随机事件触发方法
+    private void triggerRandomEvent() {
+        // 随机选择事件类型 (1-3)
+        int eventType = random.nextInt(3) + 1;
+        switch (eventType) {
+            case 1: // 情况 1：直接获得3000-5000分
+                int reward = 3000 + random.nextInt(2001); // 3000-5000随机
+                score += reward;
+                drawMessage("幸运奖励！获得 " + reward + " 分!", Color.MAGENTA);
+                break;
+            case 2: // 情况 2：赌博事件
+                handleGamblingEvent();
+                break;
+            case 3: // 情况 3：加时 60 秒
+                levelStartTime -= 60000; // 将开始时间往前调 60 秒
+                drawMessage("时间延长30秒!", Color.CYAN);
+                break;
+        }
+
+    }
+
+
+    private void handleGamblingEvent() {
+        drawMessage("来赌一手？", Color.YELLOW);
+        drawMessage("积分翻倍与减半各有一半可能", Color.YELLOW);
+        drawMessage("给你 10 秒钟时间考虑一下(Y/N)", Color.YELLOW);
+        long startTime = System.currentTimeMillis();
+        boolean answered = false;
+        boolean gamble = false;
+        // 等待玩家输入
+        while (!answered && (System.currentTimeMillis() - startTime < 10000)) { // 5秒超时
+            if (StdDraw.hasNextKeyTyped()) {
+                char key = Character.toUpperCase(StdDraw.nextKeyTyped());
+                if (key == 'Y') {
+                    gamble = true;
+                    answered = true;
+                } else if (key == 'N') {
+                    gamble = false;
+                    answered = true;
+                }
+            }
+        }
+
+        if (!answered) {
+            drawMessage("这么纠结？那就算了~", Color.GRAY);
+            return;
+        }
+
+        if (gamble) {
+            boolean win = random.nextBoolean();
+            if (win) {
+                score *= 2;
+                drawMessage("运气不错！分数翻倍！", Color.GREEN);
+            } else {
+                score /= 2;
+                drawMessage("手气不行？下次再来试试吧！", Color.RED);
+            }
+        } else {
+            drawMessage("不想玩？那就算了~", Color.WHITE);
+        }
     }
 
     // 进入下一关
@@ -191,15 +260,20 @@ public class LevelManager {
     }
 
     // 绘制临时消息
-    private void drawMessage(String message) {
-        StdDraw.setPenColor(Color.GRAY);
+    private void drawMessage(String message, Color color) {
+        StdDraw.setPenColor(Color.DARK_GRAY);
         StdDraw.filledRectangle(width / 2.0, height / 2.0, width / 4.0, 2);
-        StdDraw.setPenColor(Color.WHITE);
-        Font font = new Font("Monaco", Font.PLAIN, 20);
+        StdDraw.setPenColor(color);
+        Font font = new Font("Monaco", Font.BOLD, 20);
         StdDraw.setFont(font);
         StdDraw.text(width / 2.0, height / 2.0, message);
         StdDraw.show();
-        StdDraw.pause(1000); // 显示 1 秒
+        StdDraw.pause(1500); // 显示1.5秒
+    }
+
+    // 保留原有无颜色参数的drawMessage方法作为重载
+    private void drawMessage(String message) {
+        drawMessage(message, Color.WHITE);
     }
 
     // 检查时间是否耗尽

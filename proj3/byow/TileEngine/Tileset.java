@@ -36,7 +36,7 @@ public class Tileset {
     public static final TETile KEY = new TETile('★', Color.red, Color.black, "key");
     public static final TETile TRAP = new TETile('☠', Color.red, Color.black, "陷阱");
     public static final TETile COIN = new TETile('$', Color.yellow, Color.black, "金币");
-    public static final TETile PORTAL = new TETile('○', Color.cyan, Color.black, "传送门");
+    public static final TETile EVENT = new TETile('?', Color.MAGENTA, Color.BLACK, "随机事件");
 }
 
 

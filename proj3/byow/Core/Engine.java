@@ -181,19 +181,19 @@ public class Engine {
 
         // 设置字体和颜色
         StdDraw.setPenColor(Color.WHITE);
-        Font font = new Font("站酷酷黑", Font.PLAIN, 30);
+        Font font = new Font("站酷酷黑", Font.PLAIN, 20);
         StdDraw.setFont(font);
 
         // 1. 在左上方显示当前关卡数
         String levelText = "第 " + levelManager.getCurrentLevel() + " / " + LevelManager.MAX_LEVEL + " 关 ";
-        StdDraw.text(7.0, HEIGHT, levelText);
+        StdDraw.text(5.0, HEIGHT, levelText);
         // 2. 在右上方显示“按 Q 键退出游戏”
         String quitText = "按 Q 键退出游戏";
-        StdDraw.text(WIDTH - 10.0, HEIGHT, quitText); // 靠右显示，距离右边缘 10 个单位
+        StdDraw.text(WIDTH - 7.0, HEIGHT, quitText); // 靠右显示，距离右边缘 10 个单位
 
         // 3. 显示当前分数
         String scoreText = "当前分数 : " + levelManager.getScore();
-        StdDraw.text(WIDTH / 2.0, HEIGHT, scoreText);
+        StdDraw.text(WIDTH / 2.0 - 15, HEIGHT, scoreText);
 
         // 倒计时功能待完成
         // todo

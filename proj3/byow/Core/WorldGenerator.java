@@ -44,6 +44,8 @@ public class WorldGenerator {
         createWall();
         // 根据关卡数生成金币
         generateCoins(level);
+        // 生成随机事件
+        generateRandomEvents(level);
         return world;
     }
 
@@ -97,6 +99,47 @@ public class WorldGenerator {
                 int ny = y + dy;
                 if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
                     if (world[nx][ny] == Tileset.COIN) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+
+    // 生成随机事件
+    private void generateRandomEvents(int level) {
+        // 每关生成 1-3个随机事件
+        int eventCount = 1 + random.nextInt(3);
+
+        int eventsPlaced = 0;
+        int attempts = 0;
+        int maxAttempts = 500;
+
+        while (eventsPlaced < eventCount && attempts < maxAttempts) {
+            attempts++;
+            int x = random.nextInt(width);
+            int y = random.nextInt(height);
+
+            // 只在草地上放置随机事件，且不与其他特殊图块相邻
+            if (world[x][y] == Tileset.GRASS && !isNearSpecialTile(x, y)) {
+                world[x][y] = Tileset.EVENT;
+                eventsPlaced++;
+            }
+        }
+    }
+
+    // 辅助方法：检查周围是否有钥匙、金币或其他随机事件
+    private boolean isNearSpecialTile(int x, int y) {
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -2; dy <= 2; dy++) {
+                int nx = x + dx;
+                int ny = y + dy;
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                    TETile tile = world[nx][ny];
+                    if (tile == Tileset.KEY || tile == Tileset.COIN || tile == Tileset.EVENT ||
+                            tile == Tileset.LOCKED_DOOR || tile == Tileset.UNLOCKED_DOOR) {
                         return true;
                     }
                 }
