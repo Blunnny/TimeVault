@@ -49,6 +49,9 @@ public class Engine {
     private HighScoreManager highScoreManager = new HighScoreManager();
     private boolean showingHighScores = false;
 
+    // 标记是否显示帮助界面
+    private boolean showingHelp = false;
+
     // 关卡管理器
     private LevelManager levelManager;
 
@@ -77,50 +80,34 @@ public class Engine {
             }
             if (StdDraw.hasNextKeyTyped()) {
                 char key = StdDraw.nextKeyTyped();
-                // 在初始界面或种子输入阶段，直接处理按键，不使用队列
-                if (!gameStarted) {
-                    handleKey(key);
-//                    if (waitingForSeed) {
-//                        drawSeedInputScreen(); // 实时更新种子输入界面
-//                    }
-                } else {
-                    // 游戏开始后，使用队列和节流机制处理移动指令
-                    // 特殊处理 P 键，立即处理不加入队列
-                    if (key == 'P' || key == 'p') {
-                        isPaused = !isPaused;
-                        if (isPaused) {
-                            levelManager.pauseGame();
-                            levelManager.drawMessage("游戏已暂停 (按P继续)", Color.YELLOW);
-                        } else {
-                            levelManager.resumeGame(); // 通知关卡管理器恢复
-                            renderWorldWithHUD();
-                        }
-                    } else {
-                        long inputTime = System.currentTimeMillis();
-                        if (inputTime - lastInputTime >= INPUT_DELAY_MS) {
-                            if (commandQueue.size() < MAX_QUEUE_SIZE) {
-                                commandQueue.offer(key);
-                            }
-                            lastInputTime = inputTime;
-                        }
+                handleKey(key);
+            }
+            // 在初始界面或种子输入阶段，直接处理按键，不使用队列
+            if (gameStarted) {
+                // 游戏开始后，使用队列和节流机制处理移动指令
+                if (showingHelp) { // 如果正在显示帮助，持续绘制帮助界面
+                    drawHelpScreen();
+                } else if (isPaused) {
+                    renderWorldWithHUD();
+                    lastRenderTime = currentTime; // 更新时间戳，避免解暂停时立即重绘
+                }  else { // 游戏正常运行
+                    // 执行指令队列中的指令
+                    if (levelManager != null && currentTime - lastExecuteTime >= EXECUTE_DELAY_MS && !commandQueue.isEmpty()) {
+                        char command = commandQueue.poll(); // 取出指令
+                        handleKey(command); // 执行指令 (例如 WASD 移动)
+                        lastExecuteTime = currentTime;
+                        renderWorldWithHUD(); // 执行指令后立即渲染最新状态
+                        lastRenderTime = currentTime; // 重置渲染计时器
+                    } else if (levelManager != null && currentTime - lastRenderTime >= RENDER_INTERVAL_MS) {
+                        // 如果没有指令执行，按固定间隔渲染
+                        renderWorldWithHUD();
+                        lastRenderTime = currentTime;
                     }
                 }
+            } else { // 游戏未开始 (种子输入界面)
+                // 种子界面的绘制由 handleKey 内部的 drawSeedInputScreen() + show() 完成
+                // 无需在此处添加代码
             }
-
-            // 游戏开始后，执行队列中的指令
-            if (gameStarted && !isPaused) {
-                if (currentTime - lastExecuteTime >= EXECUTE_DELAY_MS && !commandQueue.isEmpty()) {
-                    char key = commandQueue.poll(); // 取出并移除队列头部指令
-                    handleKey(key);
-                    lastExecuteTime = currentTime;
-                }
-                // 控制渲染频率
-                if (currentTime - lastRenderTime >= RENDER_INTERVAL_MS) {
-                    renderWorldWithHUD();
-                    lastRenderTime = currentTime;
-                }
-            }
-            // 小延迟减少CPU占用
             StdDraw.pause(10);
         }
     }
@@ -171,18 +158,26 @@ public class Engine {
                 gameStarted = true; // 标记游戏开始
                 waitingForSeed = false; // 退出种子输入模式
                 renderWorldWithHUD(); // 立即渲染世界和 HUD
-            }
+            } else {}
         } else if (gameStarted) { // 处理游戏开始后的键盘输入
+            // --- 优先处理 H 键 ---
+            if (key == 'H'|| key == 'h') {
+                showingHelp = !showingHelp; // 切换帮助界面的显示状态
+                return;
+                }
+            // --- 如果正在显示帮助，则忽略其他游戏相关按键 ---
+            if (showingHelp) {
+                return; // 在帮助界面时，不处理 Q, P, O, L, WASD 等
+            }
             if (key == 'Q' || key == 'q') { // 按 Q 可以退出程序 ***待在游戏界面添加提示
                 System.exit(0);
             } else if (key == 'P' || key == 'p') { // 按 P 键暂停/继续游戏
                 isPaused = !isPaused;
                 if (isPaused) {
                     levelManager.pauseGame(); // 通知关卡管理器暂停
-                    levelManager.drawMessage("游戏已暂停 (按P继续)", Color.YELLOW);
+                    // levelManager.drawMessage("游戏已暂停 (按P继续)", Color.YELLOW);
                 } else {
                     levelManager.resumeGame(); // 通知关卡管理器恢复
-                    renderWorldWithHUD(); // 恢复时立即刷新界面
                 }
             } else if (!isPaused) { // 若未处于暂停状态，则实现其他操作逻辑
                 if (key == 'W' || key == 'w') { // 向上移动一格
@@ -235,11 +230,12 @@ public class Engine {
         StdDraw.clear(Color.BLACK);
         List<HighScore> topScores = highScoreManager.getTopScores(5);
         StdDraw.setPenColor(Color.YELLOW);
-        Font font = new Font("三极泼墨体", Font.BOLD, 25);
+        Font font = new Font("三极泼墨体", Font.BOLD, 40);
         StdDraw.setFont(font);
 
         StdDraw.text(WIDTH/2.0, HEIGHT/2.0 + 10, "=== 历史高分榜 ===");
 
+        StdDraw.setPenColor(Color.WHITE);
         for (int i = 0; i < topScores.size(); i++) {
             HighScore score = topScores.get(i);
             String text = String.format("%d. 种子: %d  分数: %,d  时间: %s",
@@ -277,23 +273,26 @@ public class Engine {
         // 1. 在左上方显示当前关卡数
         String levelText = "第 " + levelManager.getCurrentLevel() + " / " + LevelManager.MAX_LEVEL + " 关 ";
         StdDraw.text(5.0, HEIGHT, levelText);
-        // 2. 在右上方显示“按 Q 键退出游戏”
-        String quitText = "按 Q 键退出游戏";
+        // 2. 在右上方显示“按 H 键获取帮助”
+        String quitText = "按 H 键获取帮助";
         StdDraw.text(WIDTH - 7.0, HEIGHT, quitText); // 靠右显示，距离右边缘 10 个单位
         // 3. 在中间偏左显示当前分数
         String scoreText = "当前分数 : " + levelManager.getScore();
-        StdDraw.text(WIDTH / 2.0 - 15, HEIGHT, scoreText);
+        StdDraw.text(WIDTH / 2.0 - 13, HEIGHT, scoreText);
         // 4. 在中间偏右显示倒计时
         int remainingTime = levelManager.getRemainingTime();
         Color timeColor = getTimeColor(remainingTime); // 根据剩余时间改变颜色
         StdDraw.setPenColor(timeColor);
         String timeText = String.format("%02d:%02d", remainingTime / 60, remainingTime % 60);
-        StdDraw.text(WIDTH / 2.0, HEIGHT, timeText);
+        StdDraw.text(WIDTH / 2.0 + 10, HEIGHT, "剩余时间：" + timeText);
 
-        // 添加暂停状态显示
-        if (isPaused) {
+        // 暂停与帮助界面显示
+        if (showingHelp) { // 如果正在显示帮助，优先显示帮助提示
+            StdDraw.setPenColor(Color.CYAN); // 使用不同颜色区分
+            StdDraw.text(WIDTH/2.0, HEIGHT - 1, "帮助菜单 (按 H 关闭)");
+        } else if (isPaused) { // 否则，如果暂停了，显示暂停提示
             StdDraw.setPenColor(Color.YELLOW);
-            StdDraw.text(WIDTH/2, HEIGHT-1, "游戏暂停中 (按P继续)");
+            StdDraw.text(WIDTH/2.0, HEIGHT - 1, "游戏暂停中 (按 P 继续)");
         }
 
         // 显示绘制内容
@@ -312,6 +311,62 @@ public class Engine {
             return Color.YELLOW;
         }
         return Color.WHITE;
+    }
+
+    // 绘制帮助界面
+    private void drawHelpScreen() {
+        // 1. 绘制半透明背景层
+        StdDraw.setPenColor(new Color(0, 0, 0, 150)); // 半透明黑色
+        StdDraw.filledRectangle(WIDTH / 2.0, HEIGHT / 2.0, WIDTH / 2.0, HEIGHT / 2.0 - 1);
+
+        // 2. 设置文字颜色和字体
+        StdDraw.setPenColor(Color.WHITE);
+        Font helpFont = new Font("黑体", Font.PLAIN, 22); // 使用稍大一点的字体
+        StdDraw.setFont(helpFont);
+
+        // 3. 绘制帮助信息文本
+        double startY = HEIGHT * 0.85; // 从屏幕上方开始绘制
+        double lineSpacing = 2.0;     // 行间距
+
+        StdDraw.text(WIDTH / 2.0, startY, "== 游戏帮助 ==");
+        startY -= lineSpacing * 1.5; // 标题后多空一点
+
+        StdDraw.textLeft(WIDTH * 0.15, startY, "- 主要玩法：");
+        startY -= lineSpacing;
+        StdDraw.textLeft(WIDTH * 0.20, startY, "  <1> 使用 W/A/S/D 移动角色 (O)。");
+        startY -= lineSpacing;
+        StdDraw.textLeft(WIDTH * 0.20, startY, "  <2> 找到钥匙 (★)，用钥匙打开锁着的门 ( █ )。");
+        startY -= lineSpacing;
+        StdDraw.textLeft(WIDTH * 0.20, startY, "  <3> 进入打开的门以进入下一关，通过所有关卡即可获胜。");
+        startY -= lineSpacing;
+        StdDraw.textLeft(WIDTH * 0.20, startY, "  <4> 拾取金币 ($) 以获得分数（关卡越靠后分数越高）！");
+        startY -= lineSpacing;
+        StdDraw.textLeft(WIDTH * 0.20, startY, "  <5> 踩中事件点 (?) 有惊喜！");
+
+        startY -= lineSpacing * 1.5; // 分隔
+
+        StdDraw.textLeft(WIDTH * 0.15, startY, "- 按键说明：");
+        startY -= lineSpacing;
+        StdDraw.textLeft(WIDTH * 0.20, startY, "  Q : 直接退出游戏。");
+        startY -= lineSpacing;
+        StdDraw.textLeft(WIDTH * 0.20, startY, "  O : 保存当前游戏进度。");
+        startY -= lineSpacing;
+        StdDraw.textLeft(WIDTH * 0.20, startY, "  L : 加载上次保存的进度。");
+        startY -= lineSpacing;
+        StdDraw.textLeft(WIDTH * 0.20, startY, "  P : 暂停 或 继续 游戏。");
+        startY -= lineSpacing;
+        StdDraw.textLeft(WIDTH * 0.20, startY, "  H : 打开/关闭 此帮助菜单。");
+
+        startY -= lineSpacing * 2; // 底部提示
+        StdDraw.setFont(new Font("黑体", Font.BOLD, 24));
+        StdDraw.text(WIDTH / 2.0, startY, "按 H 键关闭帮助");
+
+        // 4. 显示绘制内容
+        StdDraw.show();
+
+        // 5. 重置字体和颜色
+        StdDraw.setFont(DEFAULT_FONT);
+        StdDraw.setPenColor(DEFAULT_COLOR);
     }
 
     // 保存游戏
