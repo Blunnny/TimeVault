@@ -5,8 +5,7 @@ import byow.TileEngine.TETile;
 import byow.TileEngine.Tileset;
 import byow.StdDraw;
 
-import java.awt.Color;
-import java.awt.Font;
+import java.awt.*;
 import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
@@ -135,13 +134,15 @@ public class Engine {
         // 设置画笔颜色为白色
         StdDraw.setPenColor(Color.WHITE);
         // 标题字体为 三极泼墨体（粗体，100 号）
-        Font fontTitle = new Font("三极泼墨体", Font.BOLD, 100);
+        Font fontTitle = loadFont("proj3/resources/fonts/三极泼墨体.ttf", 100f);
+        // Font fontTitle = new Font("三极泼墨体", Font.BOLD, 100);
         StdDraw.setFont(fontTitle);
         // 在指定坐标绘制文本, (WIDTH / 2.0, HEIGHT / 2.0) 是屏幕中心
         StdDraw.text(WIDTH / 2.0, HEIGHT / 2.0 + 2, "Time Vault");
 
         // 设置说明文字字体格式并绘制
-        Font fontState = new Font("黑体", Font.PLAIN, 30);
+        Font fontState = loadFont("proj3/resources/fonts/simhei.ttf", 30f);
+        // Font fontState = new Font("simhei", Font.PLAIN, 30);
         StdDraw.setFont(fontState);
         StdDraw.text(WIDTH / 2.0, HEIGHT / 2.0 - 10, "按'N'键开始"); // ***待添加闪烁效果
         // 将绘制内容从后台缓冲区刷新到屏幕上（双缓冲机制）
@@ -221,16 +222,18 @@ public class Engine {
         StdDraw.clear(Color.BLACK);
         StdDraw.setPenColor(Color.WHITE);
         // 种子输入提示字体为 三极泼墨体（粗体，80 号）
-        Font fontSeed = new Font("三极泼墨体", Font.PLAIN, 80);
+        Font fontSeed = loadFont("proj3/resources/fonts/三极泼墨体.ttf", 80f);
+        // Font fontSeed = new Font("三极泼墨体", Font.PLAIN, 80);
         StdDraw.setFont(fontSeed);
         StdDraw.text(WIDTH / 2.0, HEIGHT / 2.0 + 2, "输入种子号: " + seedInput.toString());
 
         if (showingHighScores) {
             drawHighScores();
         } else {
-            Font fontState = new Font("黑体", Font.PLAIN, 30);
+            Font fontState = loadFont("proj3/resources/fonts/simhei.ttf", 30f);
+            // Font fontState = new Font("simhei", Font.PLAIN, 30);
             StdDraw.setFont(fontState);
-            StdDraw.text(WIDTH/2.0, HEIGHT/2.0 - 15, "按 C 查看高分榜");
+            StdDraw.text(WIDTH/2.0, HEIGHT/2.0 - 15, "按'C'键查看高分榜");
             StdDraw.text(WIDTH/2.0, HEIGHT/2.0 - 10, "按'S'键开始游戏");
         }
 
@@ -283,7 +286,8 @@ public class Engine {
 
         // 设置字体和颜色
         StdDraw.setPenColor(Color.WHITE);
-        Font font = new Font("站酷酷黑", Font.PLAIN, 20);
+        Font font = loadFont("proj3/resources/fonts/站酷酷黑.ttf", 20f);
+        // Font font = new Font("站酷酷黑", Font.PLAIN, 20);
         StdDraw.setFont(font);
 
         // 1. 在左上方显示当前关卡数
@@ -340,7 +344,8 @@ public class Engine {
 
         // 2. 设置文字颜色和字体
         StdDraw.setPenColor(Color.WHITE);
-        Font helpFont = new Font("黑体", Font.PLAIN, 22); // 使用稍大一点的字体
+        Font helpFont = loadFont("proj3/resources/fonts/simhei.ttf", 22f);
+        // Font helpFont = new Font("simhei", Font.PLAIN, 22); // 使用稍大一点的字体
         StdDraw.setFont(helpFont);
 
         // 3. 绘制帮助信息文本
@@ -377,7 +382,7 @@ public class Engine {
         StdDraw.textLeft(WIDTH * 0.20, startY, "  H : 打开/关闭 此帮助菜单。");
 
         startY -= lineSpacing * 2; // 底部提示
-        StdDraw.setFont(new Font("黑体", Font.BOLD, 24));
+        StdDraw.setFont(new Font("simhei", Font.BOLD, 24));
         StdDraw.text(WIDTH / 2.0, startY, "按 H 键关闭帮助");
 
         // 4. 显示绘制内容
@@ -472,5 +477,22 @@ public class Engine {
             sb.append('\n');
         }
         return sb.toString();
+    }
+
+    // 加载自定义字体的方法
+    private Font loadFont(String fontPath, float size) {
+        try (InputStream is = getClass().getResourceAsStream(fontPath)) {
+            if (is == null) {
+                System.err.println("字体文件未找到: " + fontPath);
+                return new Font("Serif", Font.PLAIN, (int) size); // 回退字体
+            }
+            Font font = Font.createFont(Font.TRUETYPE_FONT, is).deriveFont(size);
+            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            ge.registerFont(font); // 注册字体到系统
+            return font;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new Font("Serif", Font.PLAIN, (int) size); // 回退字体
+        }
     }
 }
