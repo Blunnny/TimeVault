@@ -12,7 +12,7 @@ import java.awt.Font;
  */
 public class LevelManager {
     private int currentLevel; // 当前关卡数
-    public static final int MAX_LEVEL = 5; // 最大关卡数
+    public static final int MAX_LEVEL = 1; // 最大关卡数
     private final int width, height; // 世界尺寸
 
     private TETile[][] world; // 当前世界
@@ -28,6 +28,8 @@ public class LevelManager {
     private int score; // 玩家当前分数
     private int[] levelBonus = {0, 100, 200, 400, 800, 1600}; // 每关的基础分数奖励
 
+    private long initialSeed; // 设定初始种子用于加载之前的游戏
+
     // 倒计时相关变量
     private long levelStartTime; // 关卡开始时间（毫秒）
     private static final int TIME_LIMIT_SECONDS = 120; // 每关限时 120 秒
@@ -41,6 +43,7 @@ public class LevelManager {
         this.height = height;
         this.currentLevel = 1;
         this.score = 0; // 初始分数为0
+        this.initialSeed = seed; // 保存初始种子
         this.random = new Random(seed);
         initializeLevel(); // 初始化第一关
     }
@@ -244,6 +247,18 @@ public class LevelManager {
         StdDraw.setFont(scoreFont);
         StdDraw.text(width / 2.0, height / 2.0, "最终分数: " + score);
 
+        // 分数记录逻辑
+        boolean isNewRecord = HighScoreManager.isNewRecord(initialSeed, score);
+        HighScoreManager.addScore(initialSeed, score);
+
+        // 显示记录提示
+        if (isNewRecord) {
+            StdDraw.setPenColor(Color.ORANGE);
+            Font recordFont = new Font("三极泼墨体", Font.BOLD, 50);
+            StdDraw.setFont(recordFont);
+            StdDraw.text(width/2.0, height/2.0 - 8, "新纪录达成!");
+        }
+
         StdDraw.show();
         StdDraw.pause(3000);
     }
@@ -254,7 +269,7 @@ public class LevelManager {
         StdDraw.setPenColor(Color.WHITE);
         Font font = new Font("三极泼墨体", Font.BOLD, 40);
         StdDraw.setFont(font);
-        String[] messages = {"失败！", "败阵！", "弱鸡！", "菜鸡！", "得练！", "GG!"};
+        String[] messages = {"失败！", "败阵！", "得练！", "GG!"};
         Random randomFailure = new Random();
         StdDraw.text(width / 2.0, height / 2.0, messages[randomFailure.nextInt(messages.length)]);
         StdDraw.show();
@@ -328,5 +343,19 @@ public class LevelManager {
     // 获取最大关卡数
     public static int getMaxLevel() {
         return MAX_LEVEL;
+    }
+
+
+    // 设置游戏数据的方法
+    public void setCurrentLevel(int level) {
+        this.currentLevel = level;
+        initializeLevel();
+    }
+    public void setScore(int score) {
+        this.score = score;
+    }
+    public void setRemainingTime(int seconds) {
+        long elapsed = TIME_LIMIT_SECONDS - seconds;
+        levelStartTime = System.currentTimeMillis() - elapsed * 1000;
     }
 }

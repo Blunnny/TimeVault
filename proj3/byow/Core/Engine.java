@@ -7,7 +7,9 @@ import byow.StdDraw;
 
 import java.awt.Color;
 import java.awt.Font;
+import java.io.*;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 import java.util.Random;
 
@@ -40,6 +42,13 @@ public class Engine {
     // 添加暂停状态变量
     private boolean isPaused = false;
 
+    // 数据存储文件
+    private static final String SAVE_FILE = "gamesave.dat";
+
+    // 最高分存储相关变量
+    private HighScoreManager highScoreManager = new HighScoreManager();
+    private boolean showingHighScores = false;
+
     // 关卡管理器
     private LevelManager levelManager;
 
@@ -57,7 +66,7 @@ public class Engine {
 
         // 添加最后渲染时间跟踪
         long lastRenderTime = 0;
-        final long RENDER_INTERVAL_MS = 300; // 每200ms渲染一次，防止闪烁
+        final long RENDER_INTERVAL_MS = 300; // 每 300ms渲染一次，防止闪烁
 
         while (true) { // 持续监听用户输入
             long currentTime = System.currentTimeMillis();
@@ -71,9 +80,9 @@ public class Engine {
                 // 在初始界面或种子输入阶段，直接处理按键，不使用队列
                 if (!gameStarted) {
                     handleKey(key);
-                    if (waitingForSeed) {
-                        drawSeedInputScreen(); // 实时更新种子输入界面
-                    }
+//                    if (waitingForSeed) {
+//                        drawSeedInputScreen(); // 实时更新种子输入界面
+//                    }
                 } else {
                     // 游戏开始后，使用队列和节流机制处理移动指令
                     // 特殊处理 P 键，立即处理不加入队列
@@ -150,7 +159,10 @@ public class Engine {
                 drawSeedInputScreen(); // 显示种子输入界面
             }
         } else if (waitingForSeed) { // 处理种子输入阶段的键盘输入
-            if (Character.isDigit(key)) { // 如果用户输入的是数字，则将数字存入 seedInput
+            if (key == 'C' || key == 'c') { // 如果用户按下 C 或 c，则展示最高分列表
+                showingHighScores = !showingHighScores;
+                drawSeedInputScreen();
+            } else if (Character.isDigit(key)) { // 如果用户输入的是数字，则将数字存入 seedInput
                 seedInput.append(key);
                 drawSeedInputScreen();
             } else if (key == 'S' || key == 's') { // 如果用户按下 S 或 s，确认种子并生成世界
@@ -172,7 +184,7 @@ public class Engine {
                     levelManager.resumeGame(); // 通知关卡管理器恢复
                     renderWorldWithHUD(); // 恢复时立即刷新界面
                 }
-            } else if (!isPaused) { // 若未处于暂停状态，则实现移动逻辑
+            } else if (!isPaused) { // 若未处于暂停状态，则实现其他操作逻辑
                 if (key == 'W' || key == 'w') { // 向上移动一格
                     levelManager.movePlayer(0, 1);
                 } else if (key == 'A' || key == 'a') { // 向左移动一格
@@ -181,11 +193,17 @@ public class Engine {
                     levelManager.movePlayer(0, -1);
                 } else if (key == 'D' || key == 'd') { // 向右移动一格
                     levelManager.movePlayer(1, 0);
+                } else if (key == 'L' || key == 'l') { // 加载存档
+                    if (loadGame()) {
+                        renderWorldWithHUD();
+                    }
+                }
+                else if (key == 'O' || key == 'o') { // 保存存档
+                    saveGame();
                 }
             }
         }
     }
-
 
     // 绘制种子输入界面，显示当前输入的种子和提示。
     private void drawSeedInputScreen() {
@@ -196,14 +214,43 @@ public class Engine {
         StdDraw.setFont(fontSeed);
         StdDraw.text(WIDTH / 2.0, HEIGHT / 2.0 + 2, "输入种子号: " + seedInput.toString());
 
-        Font fontState = new Font("黑体", Font.PLAIN, 30);
-        StdDraw.setFont(fontState);
-        StdDraw.text(WIDTH / 2.0, HEIGHT / 2.0 - 10, "按'S'键开始游戏");
-        StdDraw.show();
+        if (showingHighScores) {
+            drawHighScores();
+        } else {
+            Font fontState = new Font("黑体", Font.PLAIN, 30);
+            StdDraw.setFont(fontState);
+            StdDraw.text(WIDTH/2.0, HEIGHT/2.0 - 15, "按 C 查看高分榜");
+            StdDraw.text(WIDTH/2.0, HEIGHT/2.0 - 10, "按'S'键开始游戏");
+        }
 
         // 重置字体和颜色，防止影响后续渲染
         StdDraw.setFont(DEFAULT_FONT);
         StdDraw.setPenColor(DEFAULT_COLOR);
+
+        StdDraw.show();
+    }
+
+    // 绘制最高分界面
+    private void drawHighScores() {
+        StdDraw.clear(Color.BLACK);
+        List<HighScore> topScores = highScoreManager.getTopScores(5);
+        StdDraw.setPenColor(Color.YELLOW);
+        Font font = new Font("三极泼墨体", Font.BOLD, 25);
+        StdDraw.setFont(font);
+
+        StdDraw.text(WIDTH/2.0, HEIGHT/2.0 + 10, "=== 历史高分榜 ===");
+
+        for (int i = 0; i < topScores.size(); i++) {
+            HighScore score = topScores.get(i);
+            String text = String.format("%d. 种子: %d  分数: %,d  时间: %s",
+                    i+1, score.getSeed(), score.getScore(),
+                    score.getTimestamp().substring(0, 16));
+            StdDraw.text(WIDTH/2.0, HEIGHT/2.0 - i*3, text);
+        }
+
+        if (topScores.isEmpty()) {
+            StdDraw.text(WIDTH/2.0, HEIGHT/2.0, "暂无记录");
+        }
     }
 
     // 渲染世界并绘制 HUD
@@ -265,6 +312,46 @@ public class Engine {
             return Color.YELLOW;
         }
         return Color.WHITE;
+    }
+
+    // 保存游戏
+    private void saveGame() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(
+                new FileOutputStream(SAVE_FILE))) {
+            SaveData data = new SaveData(
+                    Long.parseLong(seedInput.toString()),
+                    levelManager.getScore(),
+                    levelManager.getCurrentLevel(),
+                    levelManager.getRemainingTime()
+            );
+            oos.writeObject(data);
+            levelManager.drawMessage("游戏已保存", Color.GREEN);
+        } catch (IOException e) {
+            levelManager.drawMessage("保存失败", Color.RED);
+            e.printStackTrace();
+        }
+    }
+
+    // 加载游戏
+    private boolean loadGame() {
+        try (ObjectInputStream ois = new ObjectInputStream(
+                new FileInputStream(SAVE_FILE))) {
+
+            SaveData data = (SaveData) ois.readObject();
+            levelManager = new LevelManager(WIDTH, HEIGHT, data.getSeed());
+            levelManager.setCurrentLevel(data.getCurrentLevel());
+            levelManager.setScore(data.getScore());
+            levelManager.setRemainingTime(data.getRemainingTime());
+
+            gameStarted = true;
+            waitingForSeed = false;
+            renderWorldWithHUD();
+            levelManager.drawMessage("存档已加载", Color.GREEN);
+            return true;
+        } catch (Exception e) {
+            levelManager.drawMessage("加载存档失败", Color.RED);
+            return false;
+        }
     }
     /*
      * 处理字符串输入（例如 "N123S"），生成世界并返回
