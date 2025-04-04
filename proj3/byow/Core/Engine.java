@@ -60,6 +60,11 @@ public class Engine {
         ter.initialize(WIDTH, HEIGHT + 2); // 额外 2 行（顶部）给 HUD 指示栏
     }
 
+    // 程序入口
+    public static void main(String[] args) {
+        new Engine().interactWithKeyboard();
+    }
+
     /*
      * 处理键盘交互模式，程序的主循环。
      * 初始显示开始界面，监听用户输入，根据状态更新 UI。
@@ -69,7 +74,8 @@ public class Engine {
 
         // 添加最后渲染时间跟踪
         long lastRenderTime = 0;
-        final long RENDER_INTERVAL_MS = 300; // 每 300ms渲染一次，防止闪烁
+        final long RENDER_INTERVAL_MS = 300; // 每 300ms渲染一次(频率更低时会出现屏幕闪烁)
+        boolean needsPauseRender = false; // 标记是否需要在暂停后渲染一次
 
         while (true) { // 持续监听用户输入
             long currentTime = System.currentTimeMillis();
@@ -80,7 +86,12 @@ public class Engine {
             }
             if (StdDraw.hasNextKeyTyped()) {
                 char key = StdDraw.nextKeyTyped();
+                boolean wasPaused = isPaused; // 记录处理前的暂停状态
                 handleKey(key);
+                // 检查是否刚刚进入暂停状态
+                if (!wasPaused && isPaused) {
+                    needsPauseRender = true; // 设置标记，需要在下一次渲染循环画一次暂停画面
+                }
             }
             // 在初始界面或种子输入阶段，直接处理按键，不使用队列
             if (gameStarted) {
@@ -88,9 +99,14 @@ public class Engine {
                 if (showingHelp) { // 如果正在显示帮助，持续绘制帮助界面
                     drawHelpScreen();
                 } else if (isPaused) {
-                    renderWorldWithHUD();
-                    lastRenderTime = currentTime; // 更新时间戳，避免解暂停时立即重绘
+                    // 如果处于暂停状态
+                    if (needsPauseRender) {
+                        // 如果标记为需要渲染暂停画面，则渲染一次
+                        renderWorldWithHUD(); // 绘制包含“暂停中”信息的 HUD
+                        needsPauseRender = false; // 重置标记，之后不再渲染直到解除暂停
+                    }
                 }  else { // 游戏正常运行
+                    needsPauseRender = false; // 确保非暂停状态下此标记为 false
                     // 执行指令队列中的指令
                     if (levelManager != null && currentTime - lastExecuteTime >= EXECUTE_DELAY_MS && !commandQueue.isEmpty()) {
                         char command = commandQueue.poll(); // 取出指令
@@ -281,6 +297,9 @@ public class Engine {
         StdDraw.text(WIDTH / 2.0 - 13, HEIGHT, scoreText);
         // 4. 在中间偏右显示倒计时
         int remainingTime = levelManager.getRemainingTime();
+        if (isPaused) {
+            remainingTime = levelManager.pausedRemainingTime; // 直接访问 pausedRemainingTime（需改为 public 或添加 getter）
+        }
         Color timeColor = getTimeColor(remainingTime); // 根据剩余时间改变颜色
         StdDraw.setPenColor(timeColor);
         String timeText = String.format("%02d:%02d", remainingTime / 60, remainingTime % 60);

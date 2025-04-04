@@ -12,7 +12,7 @@ import java.awt.Font;
  */
 public class LevelManager {
     private int currentLevel; // 当前关卡数
-    public static final int MAX_LEVEL = 1; // 最大关卡数
+    public static final int MAX_LEVEL = 5; // 最大关卡数
     private final int width, height; // 世界尺寸
 
     private TETile[][] world; // 当前世界
@@ -35,7 +35,7 @@ public class LevelManager {
     private static final int TIME_LIMIT_SECONDS = 120; // 每关限时 120 秒
     private long pauseStartTime = 0; // 暂停开始时间
     private boolean isPaused = false; // 是否暂停
-    private int pausedRemainingTime = 0; // 暂停时的剩余时间
+    int pausedRemainingTime = 0; // 暂停时的剩余时间
 
     // 构造函数，初始化关卡管理器
     public LevelManager(int width, int height, long seed) {
@@ -295,19 +295,21 @@ public class LevelManager {
 
     // 暂停游戏
     public void pauseGame() {
-        if (!isPaused) {
-            isPaused = true;
-            pauseStartTime = System.currentTimeMillis();
-            pausedRemainingTime = getRemainingTime(); // 记录暂停时的剩余时间
+        if (!this.isPaused) {
+            // 计算当前的实际剩余时间
+            int currentTimeRemaining = this.getRemainingTime(); // isPaused 仍为 false，计算实时剩余时间
+            this.pausedRemainingTime = currentTimeRemaining; // 保存剩余时间
+            this.isPaused = true; // 设置暂停状态
+            this.pauseStartTime = System.currentTimeMillis(); // 记录暂停开始时间戳
         }
     }
 
     // 恢复游戏
     public void resumeGame() {
-        if (isPaused) {
-            long pausedDuration = System.currentTimeMillis() - pauseStartTime; // 计算暂停持续时间
-            levelStartTime += pausedDuration; // 调整开始时间，抵消暂停时间
-            isPaused = false;
+        if (this.isPaused) {
+            long pausedDuration = System.currentTimeMillis() - this.pauseStartTime;
+            this.levelStartTime += pausedDuration; // 调整关卡开始时间以抵消暂停期
+            this.isPaused = false; // 将 isPaused 状态设置回 false
         }
     }
 
@@ -326,7 +328,7 @@ public class LevelManager {
         } else {
             long elapsedTime = (System.currentTimeMillis() - levelStartTime) / 1000;
             int remaining = TIME_LIMIT_SECONDS - (int) elapsedTime;
-            return remaining;
+            return Math.max(0, remaining);
         }
     }
 
