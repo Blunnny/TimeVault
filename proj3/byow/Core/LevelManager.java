@@ -31,6 +31,9 @@ public class LevelManager {
     // 倒计时相关变量
     private long levelStartTime; // 关卡开始时间（毫秒）
     private static final int TIME_LIMIT_SECONDS = 120; // 每关限时 120 秒
+    private long pauseStartTime = 0; // 暂停开始时间
+    private boolean isPaused = false; // 是否暂停
+    private int pausedRemainingTime = 0; // 暂停时的剩余时间
 
     // 构造函数，初始化关卡管理器
     public LevelManager(int width, int height, long seed) {
@@ -259,7 +262,7 @@ public class LevelManager {
     }
 
     // 绘制临时消息
-    private void drawMessage(String message, Color color) {
+    public void drawMessage(String message, Color color) {
         StdDraw.setPenColor(Color.DARK_GRAY);
         StdDraw.filledRectangle(width / 2.0, height / 2.0, width / 4.0, 2);
         StdDraw.setPenColor(color);
@@ -271,22 +274,45 @@ public class LevelManager {
     }
 
     // 保留原有无颜色参数的drawMessage方法作为重载
-    private void drawMessage(String message) {
+    public void drawMessage(String message) {
         drawMessage(message, Color.WHITE);
+    }
+
+    // 暂停游戏
+    public void pauseGame() {
+        if (!isPaused) {
+            isPaused = true;
+            pauseStartTime = System.currentTimeMillis();
+            pausedRemainingTime = getRemainingTime(); // 记录暂停时的剩余时间
+        }
+    }
+
+    // 恢复游戏
+    public void resumeGame() {
+        if (isPaused) {
+            long pausedDuration = System.currentTimeMillis() - pauseStartTime; // 计算暂停持续时间
+            levelStartTime += pausedDuration; // 调整开始时间，抵消暂停时间
+            isPaused = false;
+        }
     }
 
     // 检查时间是否耗尽
     boolean isTimeUp() {
-        long currentTime = System.currentTimeMillis();
-        long elapsedTime = (currentTime - levelStartTime) / 1000; // 转换为秒
-        return elapsedTime >= TIME_LIMIT_SECONDS;
+        if (isPaused) {
+            return false; // 暂停时不检查时间耗尽
+        }
+        return getRemainingTime() <= 0;
     }
 
     // 获取剩余时间（秒）
     public int getRemainingTime() {
-        long currentTime = System.currentTimeMillis();
-        long elapsedTime = (currentTime - levelStartTime) / 1000;
-        return Math.max(0, TIME_LIMIT_SECONDS - (int) elapsedTime);
+        if (isPaused) {
+            return pausedRemainingTime; // 暂停时返回固定的剩余时间
+        } else {
+            long elapsedTime = (System.currentTimeMillis() - levelStartTime) / 1000;
+            int remaining = TIME_LIMIT_SECONDS - (int) elapsedTime;
+            return remaining;
+        }
     }
 
     // 获取当前世界

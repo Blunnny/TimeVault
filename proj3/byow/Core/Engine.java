@@ -37,6 +37,9 @@ public class Engine {
     private Queue<Character> commandQueue = new LinkedList<>(); // 指令队列
     private static final int MAX_QUEUE_SIZE = 3; // 队列最大容量
 
+    // 添加暂停状态变量
+    private boolean isPaused = false;
+
     // 关卡管理器
     private LevelManager levelManager;
 
@@ -59,7 +62,7 @@ public class Engine {
         while (true) { // 持续监听用户输入
             long currentTime = System.currentTimeMillis();
             // 检查时间是否耗尽
-            if (gameStarted && levelManager.isTimeUp()) {
+            if (gameStarted && levelManager.isTimeUp() && !isPaused) {
                 levelManager.drawFailureScreen();
                 System.exit(0);
             }
@@ -73,18 +76,30 @@ public class Engine {
                     }
                 } else {
                     // 游戏开始后，使用队列和节流机制处理移动指令
-                    long inputTime = System.currentTimeMillis();
-                    if (inputTime - lastInputTime >= INPUT_DELAY_MS) {
-                        if (commandQueue.size() < MAX_QUEUE_SIZE) {
-                            commandQueue.offer(key);
+                    // 特殊处理 P 键，立即处理不加入队列
+                    if (key == 'P' || key == 'p') {
+                        isPaused = !isPaused;
+                        if (isPaused) {
+                            levelManager.pauseGame();
+                            levelManager.drawMessage("游戏已暂停 (按P继续)", Color.YELLOW);
+                        } else {
+                            levelManager.resumeGame(); // 通知关卡管理器恢复
+                            renderWorldWithHUD();
                         }
-                        lastInputTime = inputTime;
+                    } else {
+                        long inputTime = System.currentTimeMillis();
+                        if (inputTime - lastInputTime >= INPUT_DELAY_MS) {
+                            if (commandQueue.size() < MAX_QUEUE_SIZE) {
+                                commandQueue.offer(key);
+                            }
+                            lastInputTime = inputTime;
+                        }
                     }
                 }
             }
 
             // 游戏开始后，执行队列中的指令
-            if (gameStarted) {
+            if (gameStarted && !isPaused) {
                 if (currentTime - lastExecuteTime >= EXECUTE_DELAY_MS && !commandQueue.isEmpty()) {
                     char key = commandQueue.poll(); // 取出并移除队列头部指令
                     handleKey(key);
@@ -148,14 +163,25 @@ public class Engine {
         } else if (gameStarted) { // 处理游戏开始后的键盘输入
             if (key == 'Q' || key == 'q') { // 按 Q 可以退出程序 ***待在游戏界面添加提示
                 System.exit(0);
-            } else if (key == 'W' || key == 'w') { // 向上移动一格
-                levelManager.movePlayer(0, 1);
-            } else if (key == 'A' || key == 'a') { // 向左移动一格
-                levelManager.movePlayer(-1, 0);
-            } else if (key == 'S' || key == 's') { // 向下移动一格
-                levelManager.movePlayer(0, -1);
-            } else if (key == 'D' || key == 'd') { // 向右移动一格
-                levelManager.movePlayer(1, 0);
+            } else if (key == 'P' || key == 'p') { // 按 P 键暂停/继续游戏
+                isPaused = !isPaused;
+                if (isPaused) {
+                    levelManager.pauseGame(); // 通知关卡管理器暂停
+                    levelManager.drawMessage("游戏已暂停 (按P继续)", Color.YELLOW);
+                } else {
+                    levelManager.resumeGame(); // 通知关卡管理器恢复
+                    renderWorldWithHUD(); // 恢复时立即刷新界面
+                }
+            } else if (!isPaused) { // 若未处于暂停状态，则实现移动逻辑
+                if (key == 'W' || key == 'w') { // 向上移动一格
+                    levelManager.movePlayer(0, 1);
+                } else if (key == 'A' || key == 'a') { // 向左移动一格
+                    levelManager.movePlayer(-1, 0);
+                } else if (key == 'S' || key == 's') { // 向下移动一格
+                    levelManager.movePlayer(0, -1);
+                } else if (key == 'D' || key == 'd') { // 向右移动一格
+                    levelManager.movePlayer(1, 0);
+                }
             }
         }
     }
@@ -216,6 +242,12 @@ public class Engine {
         StdDraw.setPenColor(timeColor);
         String timeText = String.format("%02d:%02d", remainingTime / 60, remainingTime % 60);
         StdDraw.text(WIDTH / 2.0, HEIGHT, timeText);
+
+        // 添加暂停状态显示
+        if (isPaused) {
+            StdDraw.setPenColor(Color.YELLOW);
+            StdDraw.text(WIDTH/2, HEIGHT-1, "游戏暂停中 (按P继续)");
+        }
 
         // 显示绘制内容
         StdDraw.show();
